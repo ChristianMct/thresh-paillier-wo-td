@@ -1,5 +1,5 @@
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import protocol.ProtocolParameters;
 import actors.ProtocolActor;
@@ -11,13 +11,15 @@ public class ProtocolTest {
 
 	public static void main(String[] args) throws InterruptedException {
 	    ActorSystem system = ActorSystem.create();
-	    List<ActorRef> all = new ArrayList<ActorRef>(5);
+	    Map<ActorRef,Integer> indexMap = new HashMap<ActorRef,Integer>(5);
 	    for(int i=0; i<5; i++) {
-	    	all.add(system.actorOf(Props.create(ProtocolActor.class)));
+	    	indexMap.put(system.actorOf(Props.create(ProtocolActor.class)),i);
 	    }
-	
+
+	    ProtocolActor.indexMap = indexMap;
+	    
 	    ProtocolParameters protoParam = ProtocolParameters.gen();
-	    all.stream().forEach(actor -> actor.tell(protoParam, ActorRef.noSender()));
+	    indexMap.keySet().stream().forEach(actor -> actor.tell(protoParam, ActorRef.noSender()));
 	}
 
 }
