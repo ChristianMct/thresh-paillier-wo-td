@@ -3,34 +3,66 @@ package protocol;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
+import math.Polynomial;
+
 public class BGWParameters {
 	
 	public static class BGWPrivateParameters {
 		public final BigInteger p;
 		public final BigInteger q;
+		public final Polynomial f;
+		public final Polynomial fp;
+		public final Polynomial g;
+		public final Polynomial gp;
+		public final Polynomial h;
+		public final Polynomial hp;
 		
-		private BGWPrivateParameters(BigInteger p, BigInteger q) {
+		private BGWPrivateParameters(BigInteger p, BigInteger q,Polynomial f,Polynomial fp,Polynomial g,Polynomial gp,Polynomial h,Polynomial hp ) {
 			this.p = p;
 			this.q = q;
+			this.f = f;
+			this.fp = fp;
+			this.g = g;
+			this.gp = gp;
+			this.h = h;
+			this.hp = hp;
 		}
 		
-		public static BGWPrivateParameters genFor(int i,ProtocolParameters protParams, SecureRandom sr) {
-			BigInteger a;
-			BigInteger b;
-			BigInteger min = BigInteger.ONE.shiftLeft(protParams.k-1);
-			BigInteger max = BigInteger.ONE.shiftLeft(protParams.k).subtract(BigInteger.ONE);
+		public static BGWPrivateParameters genFor(int i,ProtocolParameters protParam, SecureRandom sr) {
+			
+			
+			// p and q generation
+			BigInteger p;
+			BigInteger q;
+			BigInteger min = BigInteger.ONE.shiftLeft(protParam.k-1);
+			BigInteger max = BigInteger.ONE.shiftLeft(protParam.k).subtract(BigInteger.ONE);
 			BigInteger four = BigInteger.valueOf(4);
 			BigInteger modFourTarget = i == 0 ? BigInteger.valueOf(3) : BigInteger.ZERO;
 			
 			do {
-				a = min.add(new BigInteger(protParams.k-1, sr));
-				b = min.add(new BigInteger(protParams.k-1, sr));
-			} while(a.compareTo(max) > 0 ||
-					b.compareTo(max) > 0 ||
-					! a.mod(four).equals(modFourTarget) ||
-					! b.mod(four).equals(modFourTarget));
-			return new BGWPrivateParameters(a,b);
+				p = min.add(new BigInteger(protParam.k-1, sr));
+				q = min.add(new BigInteger(protParam.k-1, sr));
+			} while(p.compareTo(max) > 0 ||
+					q.compareTo(max) > 0 ||
+					! p.mod(four).equals(modFourTarget) ||
+					! q.mod(four).equals(modFourTarget));
+			
+			// polynomials generation
+			BigInteger pp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
+			BigInteger qp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
+			BigInteger c0p = new BigInteger(protParam.k, sr).mod(protParam.Pp); //Correct ?
+			
+			Polynomial f = new Polynomial(protParam.t, protParam.Pp, p, sr, protParam.k);
+			Polynomial fp = new Polynomial(protParam.t, protParam.Pp, pp , sr, protParam.k);
+			Polynomial g = new Polynomial(protParam.t, protParam.Pp, q, sr, protParam.k);
+			Polynomial gp = new Polynomial(protParam.t, protParam.Pp, qp, sr, protParam.k);
+			
+			Polynomial h = new Polynomial(2*protParam.t, protParam.Pp, BigInteger.ZERO, sr, protParam.k); 
+			Polynomial hp = new Polynomial(2*protParam.t, protParam.Pp, c0p, sr, protParam.k);
+			
+			return new BGWPrivateParameters(p,q,f,fp,g,gp,h,hp);
 		}
+		
 	}
 	
 	public static class BGWPublicParameters {
@@ -50,8 +82,14 @@ public class BGWParameters {
 			this.hpj = hpj;
 		}
 		
-		public static BGWPublicParameters genFor(int j, SecureRandom sr) {
-			return null;
+		public static BGWPublicParameters genFor(int j, ProtocolParameters protParam, BGWPrivateParameters bgwPrivParam, SecureRandom sr) {
+			BigInteger pj = bgwPrivParam.f.eval(j);
+			BigInteger ppj = bgwPrivParam.fp.eval(j);
+			BigInteger qj = bgwPrivParam.g.eval(j);
+			BigInteger qpj = bgwPrivParam.gp.eval(j);
+			BigInteger hj = bgwPrivParam.h.eval(j);
+			BigInteger hpj = bgwPrivParam.hp.eval(j);
+			return new BGWPublicParameters(pj, ppj, qj, qpj, hj, hpj);
 		}
 	}
 }
