@@ -1,6 +1,7 @@
 package protocol;
 
 import java.math.BigInteger;
+import java.security.SecureRandom;
 
 public class ProtocolParameters {
 	
@@ -20,8 +21,9 @@ public class ProtocolParameters {
 		this.k = k;
 	}
 	
-	public static ProtocolParameters gen() {
+	public static ProtocolParameters gen(int k, SecureRandom sr) {
 		BigInteger z = BigInteger.ZERO;
-		return new ProtocolParameters(z, z, z, z, 1, 128);
+		BigInteger Pp = BigInteger.probablePrime(k, sr);
+		return new ProtocolParameters(z, Pp, z, z, 1, k);
 	}
 }

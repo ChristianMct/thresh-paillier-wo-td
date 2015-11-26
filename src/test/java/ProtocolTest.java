@@ -1,3 +1,4 @@
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,12 +14,12 @@ public class ProtocolTest {
 	    ActorSystem system = ActorSystem.create();
 	    Map<ActorRef,Integer> indexMap = new HashMap<ActorRef,Integer>(5);
 	    for(int i=0; i<5; i++) {
-	    	indexMap.put(system.actorOf(Props.create(ProtocolActor.class)),i);
+	    	indexMap.put(system.actorOf(Props.create(ProtocolActor.class),"Actor"+i),i);
 	    }
 
 	    ProtocolActor.indexMap = indexMap;
 	    
-	    ProtocolParameters protoParam = ProtocolParameters.gen();
+	    ProtocolParameters protoParam = ProtocolParameters.gen(128,new SecureRandom());
 	    indexMap.keySet().stream().forEach(actor -> actor.tell(protoParam, ActorRef.noSender()));
 	}
 

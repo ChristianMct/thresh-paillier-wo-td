@@ -82,7 +82,11 @@ public class BGWParameters {
 			this.hpj = hpj;
 		}
 		
-		public static BGWPublicParameters genFor(int j, ProtocolParameters protParam, BGWPrivateParameters bgwPrivParam, SecureRandom sr) {
+		public boolean isCorrect(ProtocolParameters protocolParameters,int i,int j) {
+			return true;
+		}
+		
+		public static BGWPublicParameters genFor(int j, BGWPrivateParameters bgwPrivParam, SecureRandom sr) {
 			BigInteger pj = bgwPrivParam.f.eval(j);
 			BigInteger ppj = bgwPrivParam.fp.eval(j);
 			BigInteger qj = bgwPrivParam.g.eval(j);
