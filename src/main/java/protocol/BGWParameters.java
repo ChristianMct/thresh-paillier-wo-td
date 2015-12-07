@@ -83,6 +83,9 @@ public class BGWParameters {
 		}
 		
 		public boolean isCorrect(ProtocolParameters protocolParameters,int i,int j) {
+			BigInteger gPowPi = protocolParameters.g.modPow(pj, protocolParameters.Pp);
+			BigInteger hPowPpi = protocolParameters.h.modPow(ppj, protocolParameters.Pp);
+			
 			return true;
 		}
 		

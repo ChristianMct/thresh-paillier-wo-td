@@ -2,9 +2,12 @@ package actors;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import math.LagrangianInterpolation;
 import messages.Messages;
 import protocol.BGWParameters;
 import protocol.BGWParameters.BGWPrivateParameters;
@@ -16,7 +19,8 @@ import akka.actor.ActorRef;
 
 public class ProtocolActor extends AbstractLoggingFSM<States, Data>{
 	
-	public enum States {PARAM_AGREEMENT,BGW_AWAITING_PjQj, BGW_AWAITING_Ni};
+	public enum States {PARAM_AGREEMENT,
+						BGW_AWAITING_PjQj, BGW_AWAITING_Ni};
 	
 	private final SecureRandom sr = new SecureRandom();
 	public static Map<ActorRef, Integer> indexMap;
@@ -72,7 +76,11 @@ public class ProtocolActor extends AbstractLoggingFSM<States, Data>{
 						return stay().using(dataWithNewNi);
 					}
 					else {
-						System.out.println(self().path().name()+" computes N.");
+						List<BigInteger> Nis = dataWithNewNi.nis()
+								.map(e -> e.getValue())
+								.collect(Collectors.toList());
+						BigInteger N = LagrangianInterpolation.getIntercept(Nis, dataWithNewNi.protocolParameters.Pp);
+						System.out.println(self().path().name()+" N = "+N);
 						return stop();
 					}
 				}));
