@@ -17,8 +17,8 @@ public class ProtocolTest {
 	    
 	    ProtocolParameters protoParam = ProtocolParameters.gen(128,new SecureRandom());
 	    
-	    Map<ActorRef,Integer> indexMap = new HashMap<ActorRef,Integer>(5);
-	    for(int i=0; i<5; i++) {
+	    Map<ActorRef,Integer> indexMap = new HashMap<ActorRef,Integer>(10);
+	    for(int i=1; i<=10; i++) {
 	    	indexMap.put(system.actorOf(Props.create(ProtocolActor.class, protoParam),"Actor"+i),i);
 	    }
 	    

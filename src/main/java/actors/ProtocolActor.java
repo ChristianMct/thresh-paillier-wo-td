@@ -7,6 +7,7 @@ import java.util.Map;
 import messages.Messages.BGWResult;
 import messages.Messages.Participants;
 import protocol.ProtocolParameters;
+import actordata.ProtocolData;
 import actors.ProtocolActor.States;
 import akka.actor.AbstractLoggingFSM;
 import akka.actor.ActorRef;

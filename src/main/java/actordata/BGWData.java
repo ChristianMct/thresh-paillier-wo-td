@@ -1,4 +1,4 @@
-package actors;
+package actordata;
 
 import java.math.BigInteger;
 import java.util.Collection;
@@ -14,19 +14,30 @@ public class BGWData extends Data{
 	public final BGWPrivateParameters bgwPrivateParameters;
 	private final Map<Integer,BGWPublicParameters> bgwPublicParameters;
 	public final Map<Integer,BigInteger> Ns;
+	public final BigInteger candidateN;
+	private final Map<Integer, BigInteger> Qs;
 	
 	private BGWData(Map<ActorRef,Integer> participants,
-					BGWPrivateParameters bgwParameters,
+					BGWPrivateParameters bgwPrivateParameters,
 					Map<Integer,BGWPublicParameters> bgwPublicParameters,
-					Map<Integer,BigInteger> Ns) {
+					Map<Integer,BigInteger> Ns,
+					BigInteger candidateN,
+					Map<Integer, BigInteger> Qs) {
 		super(participants);
-		this.bgwPrivateParameters = bgwParameters;
+		this.bgwPrivateParameters = bgwPrivateParameters;
 		this.bgwPublicParameters = new HashMap<Integer,BGWPublicParameters>(bgwPublicParameters);
 		this.Ns = new HashMap<Integer,BigInteger>(Ns);
+		this.candidateN = candidateN;
+		this.Qs = new HashMap<Integer, BigInteger>(Qs);
 	}
 	
 	public static BGWData init() {
-		return new BGWData(null, null,new HashMap<Integer,BGWPublicParameters>(), new HashMap<Integer,BigInteger>());
+		return new BGWData(null,
+							null,
+							new HashMap<Integer,BGWPublicParameters>(),
+							new HashMap<Integer,BigInteger>(),
+							null,
+							new HashMap<Integer, BigInteger>());
 	}
 	
 	public boolean hasShareOf(Collection<Integer> is) {
@@ -45,12 +56,29 @@ public class BGWData extends Data{
 		return Ns.entrySet().stream();
 	}
 	
+	public boolean hasQiOf(Collection<Integer> is) {
+		return is.stream().allMatch(i->Qs.containsKey(i));
+	}
+	
+	public Stream<Map.Entry<Integer, BigInteger>> qis() {
+		return this.Qs.entrySet().stream();
+	}
+	
+	public Map<Integer,BigInteger> qiss() {
+		return this.Qs;
+	}
+	
 	public BGWData withParticipants(Map<ActorRef,Integer> participants) {
-		return new BGWData(new HashMap<ActorRef, Integer>(participants), bgwPrivateParameters, bgwPublicParameters, Ns);
+		return new BGWData(new HashMap<ActorRef, Integer>(participants),
+							bgwPrivateParameters,
+							bgwPublicParameters,
+							Ns,
+							candidateN,
+							Qs);
 	}
 	
 	public BGWData withPrivateParameters(BGWPrivateParameters params) {
-		return new BGWData(participants, params, bgwPublicParameters,Ns);
+		return new BGWData(participants, params, bgwPublicParameters,Ns, candidateN,Qs);
 	}
 	
 	public BGWData withNewShare(BGWPublicParameters share, int fromId) {
@@ -59,7 +87,7 @@ public class BGWData extends Data{
 		
 		Map<Integer, BGWPublicParameters> newMap = new HashMap<Integer,BGWPublicParameters>(bgwPublicParameters);
 		newMap.put(fromId, share);
-		return new BGWData(participants, bgwPrivateParameters, newMap,Ns);
+		return new BGWData(participants, bgwPrivateParameters, newMap,Ns,candidateN,Qs);
 	}
 	
 	public BGWData withNewNi(BigInteger Ni, int fromId) {
@@ -68,7 +96,20 @@ public class BGWData extends Data{
 		
 		Map<Integer,BigInteger> newNs = new HashMap<Integer, BigInteger>(Ns);
 		newNs.put(fromId, Ni);
-		return new BGWData(participants, bgwPrivateParameters, bgwPublicParameters , newNs);
+		return new BGWData(participants, bgwPrivateParameters, bgwPublicParameters , newNs, candidateN,Qs);
+	}
+	
+	public BGWData withCandidateN(BigInteger candidateN) {
+		return new BGWData(participants, bgwPrivateParameters, bgwPublicParameters, Ns, candidateN,Qs);
+	}
+	
+	public BGWData withNewQi(BigInteger Qi, int fromId) {
+		if(Qs.containsKey(fromId))
+			return this;
+		
+		Map<Integer, BigInteger> newMap = new HashMap<Integer, BigInteger>(Qs);
+		newMap.put(fromId, Qi);
+		return new BGWData(participants, bgwPrivateParameters, bgwPublicParameters, Ns, candidateN, newMap);
 	}
 	
 }

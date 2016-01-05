@@ -16,8 +16,9 @@ public class BGWParameters {
 		public final Polynomial gp;
 		public final Polynomial h;
 		public final Polynomial hp;
+		private final int i;
 		
-		private BGWPrivateParameters(BigInteger p, BigInteger q,Polynomial f,Polynomial fp,Polynomial g,Polynomial gp,Polynomial h,Polynomial hp ) {
+		private BGWPrivateParameters(BigInteger p, BigInteger q,Polynomial f,Polynomial fp,Polynomial g,Polynomial gp,Polynomial h,Polynomial hp,int i ) {
 			this.p = p;
 			this.q = q;
 			this.f = f;
@@ -26,6 +27,7 @@ public class BGWParameters {
 			this.gp = gp;
 			this.h = h;
 			this.hp = hp;
+			this.i = i;
 		}
 		
 		public static BGWPrivateParameters genFor(int i,ProtocolParameters protParam, SecureRandom sr) {
@@ -60,7 +62,11 @@ public class BGWParameters {
 			Polynomial h = new Polynomial(2*protParam.t, protParam.Pp, BigInteger.ZERO, sr, protParam.k); 
 			Polynomial hp = new Polynomial(2*protParam.t, protParam.Pp, c0p, sr, protParam.k);
 			
-			return new BGWPrivateParameters(p,q,f,fp,g,gp,h,hp);
+			return new BGWPrivateParameters(p,q,f,fp,g,gp,h,hp,i);
+		}
+		
+		public String toString() {
+			return String.format("BGWPrivateParameters[%d]", i);
 		}
 		
 	}
@@ -72,14 +78,18 @@ public class BGWParameters {
 		public final BigInteger qpj;
 		public final BigInteger hj;
 		public final BigInteger hpj;
+		private final int i;
+		private final int j;
 		
-		private BGWPublicParameters(BigInteger pj,BigInteger ppj, BigInteger qj, BigInteger qpj, BigInteger hj, BigInteger hpj) {
+		private BGWPublicParameters(BigInteger pj,BigInteger ppj, BigInteger qj, BigInteger qpj, BigInteger hj, BigInteger hpj, int i, int j) {
 			this.pj = pj;
 			this.ppj = ppj;
 			this.qj = qj;
 			this.qpj = qpj;
 			this.hj = hj;
 			this.hpj = hpj;
+			this.j = j;
+			this.i = i;
 		}
 		
 		public boolean isCorrect(ProtocolParameters protocolParameters,int i,int j) {
@@ -96,7 +106,12 @@ public class BGWParameters {
 			BigInteger qpj = bgwPrivParam.gp.eval(j);
 			BigInteger hj = bgwPrivParam.h.eval(j);
 			BigInteger hpj = bgwPrivParam.hp.eval(j);
-			return new BGWPublicParameters(pj, ppj, qj, qpj, hj, hpj);
+			int i = bgwPrivParam.i;
+			return new BGWPublicParameters(pj, ppj, qj, qpj, hj, hpj,i,j);
+		}
+		
+		public String toString() {
+			return String.format("BGWPublicParameters[%d][%d]", this.i, this.j);
 		}
 	}
 }

@@ -5,6 +5,8 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.omg.CORBA.PUBLIC_MEMBER;
+
 import akka.actor.ActorRef;
 
 
@@ -15,6 +17,14 @@ public class Messages {
 		public final int id;
 		public Complaint(int id) {
 			this.id = id;
+		}
+	}
+	
+	public static class BGWNPoint implements Serializable {
+		private static final long serialVersionUID = 347073615387402156L;
+		public final BigInteger point;
+		public BGWNPoint(BigInteger point) {
+			this.point = point;
 		}
 	}
 	
