@@ -1,17 +1,14 @@
 package actors;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import messages.Messages.BGWResult;
+import messages.Messages.CandidateN;
 import messages.Messages.Participants;
 import protocol.ProtocolParameters;
 import actordata.ProtocolData;
 import actors.ProtocolActor.States;
 import akka.actor.AbstractLoggingFSM;
 import akka.actor.ActorRef;
-import akka.actor.PoisonPill;
 import akka.actor.Props;
 
 public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
@@ -24,6 +21,7 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 	
 	public ProtocolActor(ProtocolParameters protocolParams) {
 		bgwActor = context().actorOf(Props.create(BGWProtocolActor.class, protocolParams,self()), "BGWActor");
+		biprimalTestActor = context().actorOf(Props.create(BiprimalityTestActor.class, self()), "BiprimalityTestActor");
 		biprimalTestActor = null;
 		
 		startWith(States.INITIALIZATION, ProtocolData.init());
@@ -35,11 +33,10 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 					return goTo(States.BGW);
 				}));
 		
-		when(States.BGW, matchEvent(BGWResult.class, 
-				(bgwResult, data) -> {
-					bgwActor.tell(PoisonPill.getInstance(), self());
-					System.out.println(self().path()+" N = "+bgwResult.N);
-					return goTo(States.BIPRIMAL_TEST).using(data.withNewN(bgwResult.N));
+		when(States.BGW, matchEvent(CandidateN.class, 
+				(candidateN, data) -> {
+					System.out.println(self().path()+" N = "+candidateN.N);
+					return goTo(States.BIPRIMAL_TEST).using(data.withNewN(candidateN.N));
 				}));
 		when(States.BGW, matchAnyEvent(
 				(evt, data) -> {
@@ -47,6 +44,9 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 					return stay();
 				}));
 		
-		when(States.BIPRIMAL_TEST, matchEvent(Boolean.class, (evt,data) -> {return stay();}));
+		when(States.BIPRIMAL_TEST, matchAnyEvent((evt,data) -> {
+			biprimalTestActor.tell(evt, sender());
+			return stay();
+		}));
 	}
 }

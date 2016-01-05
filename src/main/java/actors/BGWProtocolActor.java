@@ -15,7 +15,6 @@ import org.bouncycastle.pqc.math.linearalgebra.IntegerFunctions;
 import math.LagrangianInterpolation;
 import messages.Messages;
 import messages.Messages.BGWNPoint;
-import messages.Messages.BGWResult;
 import messages.Messages.Participants;
 import protocol.BGWParameters.BGWPrivateParameters;
 import protocol.BGWParameters.BGWPublicParameters;
@@ -110,70 +109,12 @@ public class BGWProtocolActor extends AbstractLoggingFSM<States, BGWData>{
 								.collect(Collectors.toList());
 						BigInteger N = LagrangianInterpolation.getIntercept(Nis, protocolParameters.Pp);
 						
-						BigInteger gp = getGp(N);
-						BigInteger Qi = getQi(gp,N, data.bgwPrivateParameters.p, data.bgwPrivateParameters.q, actors.get(this.master));
-						
-						broadCast(Qi, actors.keySet());
-						return goTo(States.BGW_BIPRIMAL_TEST).using(data.withCandidateN(N)
-																			.withNewQi(Qi, actors.get(this.master)));
+						master.tell(new Messages.CandidateN(N, data.bgwPrivateParameters),  self());
 					}
+					
+					return goTo(States.INITILIZATION).using(BGWData.init());
 				}));
 		
-		when(States.BGW_BIPRIMAL_TEST, matchEvent(BigInteger.class,
-				(newQi, data) -> {
-					Map<ActorRef,Integer> actors = data.getParticipants();
-					BGWData newData = data.withNewQi(newQi, actors.get(sender()));
-					if(!newData.hasQiOf(actors.values())) {
-						return stay().using(newData);
-					} else {
-						
-						BigInteger check1 = newData.qis().map(qi -> {if (qi.getKey() == 1) return qi.getValue(); 
-																	else return qi.getValue().modInverse(newData.candidateN);})
-									.reduce(BigInteger.ONE, (qi,qj) -> qi.multiply(qj)).mod(newData.candidateN);
-						
-						BigInteger q1 = newData.qiss().get(1);
-						BigInteger prod = BigInteger.ONE;
-						for(Entry<Integer, BigInteger> e : newData.qiss().entrySet()) {
-							if(e.getKey() != 1)
-								prod = prod.multiply(e.getValue());
-						}
-						
-						BigInteger check = q1.divide(prod.mod(newData.candidateN)).mod(newData.candidateN);
-						
-						BigInteger minusOne = BigInteger.ONE.negate().mod(newData.candidateN);
-						
-						
-						if (check.equals(minusOne) || check.equals(BigInteger.ONE)) {
-							System.out.println("OK");
-							if(!this.master.equals(self()))
-								this.master.tell(new BGWResult(newData.candidateN), self());
-							else 
-								System.out.println("Found N = "+newData.candidateN);
-							return stop();
-						} else {
-							System.out.println(self().path().toStringWithoutAddress()+"-"+check);
-							iter++;
-							BGWPrivateParameters bgwPrivateParameters = BGWPrivateParameters.genFor(actors.get(this.master),
-																									protocolParameters,
-																									sr);
-							BGWPublicParameters bgwSelfShare = BGWPublicParameters.genFor(actors.get(this.master),
-																							bgwPrivateParameters,
-																							sr);
-							
-							BGWData nextStateData = BGWData.init().withPrivateParameters(bgwPrivateParameters)
-												.withNewShare(bgwSelfShare, actors.get(this.master))
-												.withParticipants(actors);
-
-							actors.entrySet().stream()
-								.filter(e -> !e.getKey().equals(this.master))
-								.forEach(e -> e.getKey().tell(BGWPublicParameters.genFor(e.getValue(), bgwPrivateParameters, sr), this.master));
-							
-							
-							return goTo(States.BGW_AWAITING_PjQj).using(nextStateData);
-						}
-						
-					}
-				}));
 		
 		whenUnhandled(matchAnyEvent((evt,data) -> {
 			
@@ -197,23 +138,6 @@ public class BGWProtocolActor extends AbstractLoggingFSM<States, BGWData>{
 		targets.stream().forEach(actor -> {if (!actor.equals(this.master)) actor.tell(o, this.master);});
 	}
 	
-	private BigInteger getGp(BigInteger N) {
-		BigInteger candidateGp = BigInteger.TEN;
-		
-		while(IntegerFunctions.jacobi(candidateGp, N) != 1)
-			candidateGp = candidateGp.add(BigInteger.ONE);
-		return candidateGp;
-	}
-	
-	private BigInteger getQi(BigInteger gp, BigInteger N, BigInteger pi, BigInteger qi, int i) {
-		BigInteger four = BigInteger.valueOf(4);
-		BigInteger exp;
-		if (i == 1) {
-			exp = N.add(BigInteger.ONE).subtract(pi).subtract(qi).divide(four);
-		} else {
-			exp = pi.add(qi).divide(four);
-		}
-		return gp.modPow(exp, N);
-	}
+
 	
 }

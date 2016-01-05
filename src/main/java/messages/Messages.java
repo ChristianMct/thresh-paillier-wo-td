@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.omg.CORBA.PUBLIC_MEMBER;
 
+import protocol.BGWParameters.BGWPrivateParameters;
 import akka.actor.ActorRef;
 
 
@@ -28,13 +29,13 @@ public class Messages {
 		}
 	}
 	
-	public static class BGWResult implements Serializable{
-		private static final long serialVersionUID = -7313055519959943195L;
-		public final BigInteger N;
-		public BGWResult(BigInteger N) {
-			this.N = N;
-		}
-	}
+//	public static class BGWResult implements Serializable{
+//		private static final long serialVersionUID = -7313055519959943195L;
+//		public final BigInteger N;
+//		public BGWResult(BigInteger N) {
+//			this.N = N;
+//		}
+//	}
 	
 	public static class Participants implements Serializable {
 		private static final long serialVersionUID = 7032510981247682105L;
@@ -44,6 +45,26 @@ public class Messages {
 		}
 		public Map<ActorRef, Integer> getParticipants() {
 			return new HashMap<ActorRef, Integer>(this.participants);
+		}
+	}
+	
+	public static class CandidateN implements Serializable {
+		private static final long serialVersionUID = -8795987153165109384L;
+		public final BigInteger N;
+		public final BGWPrivateParameters bgwPrivateParameters;		
+		public CandidateN(BigInteger candidateN, BGWPrivateParameters bgwPrivateParameters) {
+			this.N = candidateN;
+			this.bgwPrivateParameters = bgwPrivateParameters;
+		}
+	}
+	
+	public static class QiTestForRound implements Serializable {
+		private static final long serialVersionUID = -9085928006292964488L;
+		public final BigInteger Qi;
+		public final int round;
+		public QiTestForRound(BigInteger Qi, int round) {
+			this.Qi = Qi;
+			this.round = round;
 		}
 	}
 }
