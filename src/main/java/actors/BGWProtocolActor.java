@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.bouncycastle.pqc.math.linearalgebra.IntegerFunctions;
+import org.omg.CORBA.INITIALIZE;
 
 import math.LagrangianInterpolation;
 import messages.Messages;
@@ -48,7 +49,6 @@ public class BGWProtocolActor extends AbstractLoggingFSM<States, BGWData>{
 		
 		when(States.INITILIZATION, matchEvent(Participants.class,
 				(participants,data) -> {
-					iter++;
 					Map<ActorRef,Integer> actors = participants.getParticipants();
 					BGWPrivateParameters bgwPrivateParameters = BGWPrivateParameters.genFor(actors.get(this.master),
 																							protocolParameters,
@@ -60,10 +60,6 @@ public class BGWProtocolActor extends AbstractLoggingFSM<States, BGWData>{
 					BGWData nextStateData = data.withPrivateParameters(bgwPrivateParameters)
 										.withNewShare(bgwSelfShare, actors.get(this.master))
 										.withParticipants(actors);
-
-					actors.entrySet().stream()
-						.filter(e -> !e.getKey().equals(this.master))
-						.forEach(e -> e.getKey().tell(BGWPublicParameters.genFor(e.getValue(), bgwPrivateParameters, sr), this.master));
 					
 					return goTo(States.BGW_AWAITING_PjQj).using(nextStateData);
 				}
@@ -89,7 +85,7 @@ public class BGWProtocolActor extends AbstractLoggingFSM<States, BGWData>{
 							BigInteger sumHj = dataWithNewShare.shares().map(e -> e.getValue().hj).reduce(BigInteger.ZERO, (h1,h2) -> h1.add(h2));
 							BigInteger Ni = (sumPj.multiply(sumQj)).add(sumHj).mod(protocolParameters.Pp);
 							
-							broadCast(new BGWNPoint(Ni), actors.keySet());
+							
 							return goTo(States.BGW_AWAITING_Ni).using(dataWithNewShare.withNewNi(Ni, actors.get(this.master)));
 						}
 					}
@@ -109,27 +105,45 @@ public class BGWProtocolActor extends AbstractLoggingFSM<States, BGWData>{
 								.collect(Collectors.toList());
 						BigInteger N = LagrangianInterpolation.getIntercept(Nis, protocolParameters.Pp);
 						
-						master.tell(new Messages.CandidateN(N, data.bgwPrivateParameters),  self());
+						this.master.tell(new Messages.CandidateN(N, data.bgwPrivateParameters),  self());
 					}
 					
-					return goTo(States.INITILIZATION).using(BGWData.init());
+					return goTo(States.INITILIZATION).using(BGWData.init().withParticipants(data.getParticipants()));
 				}));
 		
 		
 		whenUnhandled(matchAnyEvent((evt,data) -> {
 			
-			log().warning(String.format(" got Unhandled event %s on state %s%d", evt, this.stateName(),iter));
+			//log().warning(String.format(" got Unhandled event %s on state %s %d", evt, this.stateName(),iter));
 			//self().tell(evt, sender());
+			self().tell(evt, sender());
 			
 			return stay();
 		}));
 		
 		onTransition((from,to) -> {
-			System.out.println(String.format("%s transition %s -> %s %d", ActorUtils.nameOf(self()), from, to , iter));
-			if(from.equals(States.BGW_BIPRIMAL_TEST) && to.equals(States.BGW_AWAITING_PjQj))
-				Thread.sleep(10);
-			//else 
-			//	Thread.sleep(new Random().nextInt(1000));
+			
+			Map<ActorRef, Integer> actors = nextStateData().getParticipants();
+			
+			if(to == States.INITILIZATION){
+				iter++;
+				//self().tell(new Participants(nextStateData().getParticipants()), self());
+			}
+			
+			if(from == States.INITILIZATION && to == States.BGW_AWAITING_PjQj) {
+				actors.entrySet().stream()
+				.filter(e -> !e.getKey().equals(this.master))
+				.forEach(e -> e.getKey().tell(BGWPublicParameters.genFor(e.getValue(), nextStateData().bgwPrivateParameters, sr), this.master));
+			}
+			
+			if(from == States.BGW_AWAITING_PjQj && to == States.BGW_AWAITING_Ni) {
+				
+				broadCast(new BGWNPoint(nextStateData().Ns.get(actors.get(this.master))), actors.keySet());
+			}
+			
+			
+			
+			//System.out.println(String.format("%s transition %s -> %s %d", ActorUtils.nameOf(self()), from, to , iter));
 		});
 	}
 

@@ -39,7 +39,7 @@ public class BGWParameters {
 			BigInteger min = BigInteger.ONE.shiftLeft(protParam.k-1);
 			BigInteger max = BigInteger.ONE.shiftLeft(protParam.k).subtract(BigInteger.ONE);
 			BigInteger four = BigInteger.valueOf(4);
-			BigInteger modFourTarget = i == 0 ? BigInteger.valueOf(3) : BigInteger.ZERO;
+			BigInteger modFourTarget = i == 1 ? BigInteger.valueOf(3) : BigInteger.ZERO;
 			
 			do {
 				p = min.add(new BigInteger(protParam.k-1, sr));
@@ -48,6 +48,10 @@ public class BGWParameters {
 					q.compareTo(max) > 0 ||
 					! p.mod(four).equals(modFourTarget) ||
 					! q.mod(four).equals(modFourTarget));
+			
+			// Injection of stuff
+			//p = i == 1 ? new BigInteger("2905983851") :  new BigInteger("46406792");
+			//q = i == 1 ? new BigInteger("23") :  new BigInteger("431972452");
 			
 			// polynomials generation
 			BigInteger pp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
@@ -61,6 +65,7 @@ public class BGWParameters {
 			
 			Polynomial h = new Polynomial(2*protParam.t, protParam.Pp, BigInteger.ZERO, sr, protParam.k); 
 			Polynomial hp = new Polynomial(2*protParam.t, protParam.Pp, c0p, sr, protParam.k);
+			
 			
 			return new BGWPrivateParameters(p,q,f,fp,g,gp,h,hp,i);
 		}

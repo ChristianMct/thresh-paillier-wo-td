@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import protocol.BGWParameters.BGWPrivateParameters;
 import akka.actor.ActorRef;
 
 public class BiprimalityTestData extends Data{
@@ -13,9 +14,11 @@ public class BiprimalityTestData extends Data{
 	private final Map<Integer, BigInteger>[] Qs;
 	public final BigInteger N;
 	public final int round;
+	public final BGWPrivateParameters bgwPrivateParameters;
 	
 	private BiprimalityTestData(Map<ActorRef, Integer> participants,
 			BigInteger N,
+			BGWPrivateParameters bgwPrivateParameters,
 			Map<Integer, BigInteger>[] Qs,
 			int round) {
 		super(participants);
@@ -25,6 +28,7 @@ public class BiprimalityTestData extends Data{
 			this.Qs[i] = new HashMap<Integer, BigInteger>(Qs[i]);
 		
 		this.N = N;
+		this.bgwPrivateParameters = bgwPrivateParameters;
 		this.round = round;
 	}
 	
@@ -33,6 +37,7 @@ public class BiprimalityTestData extends Data{
 		Qs[0] = new HashMap<Integer, BigInteger>();
 		Qs[1] = new HashMap<Integer, BigInteger>();
 		return new BiprimalityTestData(null,
+				null,
 				null,
 				Qs,
 				0);
@@ -50,8 +55,8 @@ public class BiprimalityTestData extends Data{
 		return this.Qs[round%2];
 	}
 	
-	public BiprimalityTestData withNewCandidateN(BigInteger N) {
-		return new BiprimalityTestData(participants, N ,Qs, round);
+	public BiprimalityTestData withNewCandidateN(BigInteger N, BGWPrivateParameters bgwPrivateParameters) {
+		return new BiprimalityTestData(participants, N,bgwPrivateParameters ,Qs, round);
 	}
 	
 	public BiprimalityTestData withNewQi(BigInteger Qi, int fromId, int round) {
@@ -65,17 +70,21 @@ public class BiprimalityTestData extends Data{
 		newQs[round%2] = newMap;
 		newQs[(round+1)%2] = Qs[(round+1)%2];
 		
-		return new BiprimalityTestData(participants, N, newQs,round);
+		return new BiprimalityTestData(participants, N, bgwPrivateParameters,newQs,round);
 	}
 
 	public BiprimalityTestData withParticipants(Map<ActorRef,Integer> participants) { 
-		return new BiprimalityTestData(participants, N, Qs, round);
+		return new BiprimalityTestData(participants, N, bgwPrivateParameters,Qs, round);
 	}
 	
 	public BiprimalityTestData forNextRound() {
 		Map<Integer, BigInteger>[] newQs = new Map[2];
 		newQs [round%2] = new HashMap<Integer, BigInteger>();
-		newQs[(round+1)%2] = Qs[(round+1)%2];
-		return new BiprimalityTestData(participants, N, newQs, round+1);
+		newQs[(round+1)%2] = new HashMap<Integer,BigInteger>( Qs[(round+1)%2]);
+		return new BiprimalityTestData(participants, N, bgwPrivateParameters, newQs, round+1);
+	}
+
+	public BiprimalityTestData forNextCandidate() {
+		return init().withParticipants(participants);
 	}
 }

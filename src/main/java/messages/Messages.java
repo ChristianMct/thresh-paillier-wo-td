@@ -67,4 +67,17 @@ public class Messages {
 			this.round = round;
 		}
 	}
+	
+	public static class BiprimalityTestResult implements Serializable {
+		private static final long serialVersionUID = -5915058380856792885L;
+		public BigInteger N;
+		public BGWPrivateParameters bgwPrivateParameters;
+		public boolean passes;
+		public BiprimalityTestResult(BigInteger N,
+				BGWPrivateParameters bgwPrivateParameters, boolean passes) {
+			this.N = N;
+			this.bgwPrivateParameters = bgwPrivateParameters;
+			this.passes = passes;
+		}
+	}
 }
