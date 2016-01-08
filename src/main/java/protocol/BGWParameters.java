@@ -11,23 +11,23 @@ public class BGWParameters {
 		public final BigInteger p;
 		public final BigInteger q;
 		public final PolynomialMod f;
-		public final PolynomialMod fp;
 		public final PolynomialMod g;
-		public final PolynomialMod gp;
 		public final PolynomialMod h;
-		public final PolynomialMod hp;
+		//public final PolynomialMod fp;
+		//public final PolynomialMod gp;
+		//public final PolynomialMod hp;
 		private final int i;
 		
-		private BGWPrivateParameters(BigInteger p, BigInteger q,PolynomialMod f,PolynomialMod fp,PolynomialMod g,PolynomialMod gp,PolynomialMod h,PolynomialMod hp,int i ) {
+		private BGWPrivateParameters(int i, BigInteger p, BigInteger q,PolynomialMod f, PolynomialMod g, PolynomialMod h/*, PolynomialMod fp,PolynomialMod gp,PolynomialMod hp*/) {
 			this.p = p;
 			this.q = q;
 			this.f = f;
-			this.fp = fp;
 			this.g = g;
-			this.gp = gp;
 			this.h = h;
-			this.hp = hp;
 			this.i = i;
+			//this.fp = fp;
+			//this.gp = gp;
+			//this.hp = hp;
 		}
 		
 		public static BGWPrivateParameters genFor(int i,ProtocolParameters protParam, SecureRandom sr) {
@@ -54,20 +54,20 @@ public class BGWParameters {
 			q = i == 1 ? new BigInteger("23") :  new BigInteger("431972452");
 			
 			// polynomials generation
-			BigInteger pp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
-			BigInteger qp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
-			BigInteger c0p = new BigInteger(protParam.k, sr).mod(protParam.Pp); //Correct ?
 			
 			PolynomialMod f = new PolynomialMod(protParam.t, protParam.Pp, p, protParam.k, sr);
-			PolynomialMod fp = new PolynomialMod(protParam.t, protParam.Pp, pp , protParam.k, sr);
 			PolynomialMod g = new PolynomialMod(protParam.t, protParam.Pp, q, protParam.k, sr);
-			PolynomialMod gp = new PolynomialMod(protParam.t, protParam.Pp, qp, protParam.k, sr);
-			
 			PolynomialMod h = new PolynomialMod(2*protParam.t, protParam.Pp, BigInteger.ZERO, protParam.k, sr); 
-			PolynomialMod hp = new PolynomialMod(2*protParam.t, protParam.Pp, c0p, protParam.k, sr);
+			
+//			BigInteger pp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
+//			BigInteger qp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
+//			BigInteger c0p = new BigInteger(protParam.k, sr).mod(protParam.Pp); //Correct ?			
+//			PolynomialMod fp = new PolynomialMod(protParam.t, protParam.Pp, pp , protParam.k, sr);
+//			PolynomialMod gp = new PolynomialMod(protParam.t, protParam.Pp, qp, protParam.k, sr);			
+//			PolynomialMod hp = new PolynomialMod(2*protParam.t, protParam.Pp, c0p, protParam.k, sr);
 			
 			
-			return new BGWPrivateParameters(p,q,f,fp,g,gp,h,hp,i);
+			return new BGWPrivateParameters(i, p, q, f, g, h/*, fp, gp, hp*/);
 		}
 		
 		public String toString() {
@@ -77,24 +77,24 @@ public class BGWParameters {
 	}
 	
 	public static class BGWPublicParameters {
-		public final BigInteger pj;
-		public final BigInteger ppj;
-		public final BigInteger qj;
-		public final BigInteger qpj;
-		public final BigInteger hj;
-		public final BigInteger hpj;
 		private final int i;
 		private final int j;
+		public final BigInteger pj;
+		public final BigInteger qj;
+		public final BigInteger hj;
+//		public final BigInteger qpj;
+//		public final BigInteger ppj;
+//		public final BigInteger hpj;
 		
-		private BGWPublicParameters(BigInteger pj,BigInteger ppj, BigInteger qj, BigInteger qpj, BigInteger hj, BigInteger hpj, int i, int j) {
+		private BGWPublicParameters(int i, int j, BigInteger pj, BigInteger qj, BigInteger hj/*, BigInteger ppj, BigInteger qpj, BigInteger hpj,*/) {
 			this.pj = pj;
-			this.ppj = ppj;
 			this.qj = qj;
-			this.qpj = qpj;
 			this.hj = hj;
-			this.hpj = hpj;
 			this.j = j;
 			this.i = i;
+//			this.ppj = ppj;
+//			this.qpj = qpj;
+//			this.hpj = hpj;
 		}
 		
 		public boolean isCorrect(ProtocolParameters protocolParameters,int i,int j) {
@@ -105,14 +105,14 @@ public class BGWParameters {
 		}
 		
 		public static BGWPublicParameters genFor(int j, BGWPrivateParameters bgwPrivParam, SecureRandom sr) {
-			BigInteger pj = bgwPrivParam.f.eval(j);
-			BigInteger ppj = bgwPrivParam.fp.eval(j);
-			BigInteger qj = bgwPrivParam.g.eval(j);
-			BigInteger qpj = bgwPrivParam.gp.eval(j);
-			BigInteger hj = bgwPrivParam.h.eval(j);
-			BigInteger hpj = bgwPrivParam.hp.eval(j);
 			int i = bgwPrivParam.i;
-			return new BGWPublicParameters(pj, ppj, qj, qpj, hj, hpj,i,j);
+			BigInteger pj = bgwPrivParam.f.eval(j);
+			BigInteger qj = bgwPrivParam.g.eval(j);
+			BigInteger hj = bgwPrivParam.h.eval(j);
+//			BigInteger ppj = bgwPrivParam.fp.eval(j);
+//			BigInteger qpj = bgwPrivParam.gp.eval(j);
+//			BigInteger hpj = bgwPrivParam.hp.eval(j);
+			return new BGWPublicParameters(i,j, pj, qj, hj/*, ppj, qpj,  hpj*/);
 		}
 		
 		public String toString() {

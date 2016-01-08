@@ -2,25 +2,17 @@ package actors;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
-
-
-
-
-
 import java.util.Map;
 import java.util.Set;
 
-import org.bouncycastle.pqc.math.linearalgebra.BigIntUtils;
-
-import protocol.ProtocolParameters;
 import math.IntegersUtils;
-import math.PolynomialSharing;
-import math.PolynomialSharing.PolynomialSharingFactory;
-import math.PolynomialSharing.Share;
+import math.Polynomial;
+import math.PolynomialMod;
 import messages.Messages;
 import messages.Messages.AcceptedN;
 import messages.Messages.BetaiRiShares;
 import messages.Messages.Participants;
+import protocol.ProtocolParameters;
 import actordata.KeysDerivationData;
 import actors.KeysDerivationActor.States;
 import akka.actor.AbstractLoggingFSM;
@@ -52,15 +44,12 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 			BigInteger betai = IntegersUtils.pickInRange(BigInteger.ZERO, KN, rand);
 			BigInteger Ri = IntegersUtils.pickInRange(BigInteger.ZERO, K2N, rand);
 			
-			PolynomialSharingFactory sharingFactory = 
-					new PolynomialSharingFactory(protocolParameters.t, protocolParameters.k, rand);
-			
-			PolynomialSharing betaiSharing = sharingFactory.share(betai);
-			PolynomialSharing RiSharing = sharingFactory.share(Ri);
+			PolynomialMod betaiSharing = new PolynomialMod(protocolParameters.t, protocolParameters.Pp, betai, protocolParameters.k, rand);
+			Polynomial RiSharing = new Polynomial(protocolParameters.t, Ri, protocolParameters.k, rand);
 			
 			int self = data.getParticipants().get(this.master);
-			Share selfBetaShare = betaiSharing.getShare(self);
-			Share selfRiShare = RiSharing.getShare(self);
+			BigInteger selfBetaShare = betaiSharing.eval(self);
+			BigInteger selfRiShare = RiSharing.eval(self);
 			
 			KeysDerivationData nextData = data.withN(N, phi)
 												.withSharings(betaiSharing, RiSharing)
@@ -71,12 +60,12 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 		
 		onTransition(matchState(States.AWAITING_N, States.AWAITING_BETAi_Ri_SHARES, () -> {
 			Map<ActorRef, Integer> actors = nextStateData().getParticipants();
-			PolynomialSharing betaiSharing = nextStateData().betaiSharing;
-			PolynomialSharing RiSharing = nextStateData().RiSharing;
+			PolynomialMod betaiSharing = nextStateData().betaiSharing;
+			Polynomial RiSharing = nextStateData().RiSharing;
 			actors.entrySet().stream().forEach(e -> {
 				if(!e.getKey().equals(this.master)){
-					Share betaiShare = betaiSharing.getShare(e.getValue());
-					Share RiShare = RiSharing.getShare(e.getValue());
+					BigInteger betaiShare = betaiSharing.eval(e.getValue());
+					BigInteger RiShare = RiSharing.eval(e.getValue());
 					e.getKey().tell(new Messages.BetaiRiShares(betaiShare, RiShare), this.master);
 				}
 			});

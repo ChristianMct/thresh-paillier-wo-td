@@ -5,10 +5,6 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
-import math.PolynomialSharing.Share;
-
-import org.omg.CORBA.PUBLIC_MEMBER;
-
 import protocol.BGWParameters.BGWPrivateParameters;
 import akka.actor.ActorRef;
 
@@ -88,9 +84,9 @@ public class Messages {
 	}
 	
 	public static class BetaiRiShares {
-		public final Share betaiShare;
-		public final Share RiShare;
-		public BetaiRiShares(Share betaiShare, Share RiShare) {
+		public final BigInteger betaiShare;
+		public final BigInteger RiShare;
+		public BetaiRiShares(BigInteger betaiShare, BigInteger RiShare) {
 			this.betaiShare = betaiShare;
 			this.RiShare = RiShare;
 		}
