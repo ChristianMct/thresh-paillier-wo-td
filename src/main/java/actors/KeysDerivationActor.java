@@ -5,13 +5,10 @@ import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Set;
 
-import math.IntegersUtils;
-import math.Polynomial;
-import math.PolynomialMod;
-import messages.Messages;
 import messages.Messages.AcceptedN;
-import messages.Messages.BetaiRiShares;
 import messages.Messages.Participants;
+import protocol.KeysDerivationParameters.KeysDerivationPrivateParameters;
+import protocol.KeysDerivationParameters.KeysDerivationPublicParameters;
 import protocol.ProtocolParameters;
 import actordata.KeysDerivationData;
 import actors.KeysDerivationActor.States;
@@ -38,45 +35,35 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 		when(States.AWAITING_N, matchEvent(AcceptedN.class, (acceptedN, data) -> {
 			BigInteger N = acceptedN.N;
 			BigInteger phi = acceptedN.phi;
-			BigInteger KN = N.multiply(BigInteger.valueOf(protocolParameters.K));
-			BigInteger K2N = KN.multiply(BigInteger.valueOf(protocolParameters.K));
-			
-			BigInteger betai = IntegersUtils.pickInRange(BigInteger.ZERO, KN, rand);
-			BigInteger Ri = IntegersUtils.pickInRange(BigInteger.ZERO, K2N, rand);
-			
-			PolynomialMod betaiSharing = new PolynomialMod(protocolParameters.t, protocolParameters.Pp, betai, protocolParameters.k, rand);
-			Polynomial RiSharing = new Polynomial(protocolParameters.t, Ri, protocolParameters.k, rand);
-			
 			int self = data.getParticipants().get(this.master);
-			BigInteger selfBetaShare = betaiSharing.eval(self);
-			BigInteger selfRiShare = RiSharing.eval(self);
+
+			KeysDerivationPrivateParameters keysDerivationPrivateParameters = KeysDerivationPrivateParameters.gen(protocolParameters, self, N, rand);
+			
+			KeysDerivationPublicParameters keysDerivationPublicParameters = KeysDerivationPublicParameters.genFor(self, keysDerivationPrivateParameters);
 			
 			KeysDerivationData nextData = data.withN(N, phi)
-												.withSharings(betaiSharing, RiSharing)
-												.withNewBetaiRiSharesFor(self, selfBetaShare, selfRiShare);
+												.withPrivateParameters(keysDerivationPrivateParameters)
+												.withNewPublicParametersFor(self, keysDerivationPublicParameters);
 			
 			return goTo(States.AWAITING_BETAi_Ri_SHARES).using(nextData);
 		}));
 		
 		onTransition(matchState(States.AWAITING_N, States.AWAITING_BETAi_Ri_SHARES, () -> {
 			Map<ActorRef, Integer> actors = nextStateData().getParticipants();
-			PolynomialMod betaiSharing = nextStateData().betaiSharing;
-			Polynomial RiSharing = nextStateData().RiSharing;
+			KeysDerivationPrivateParameters privateParameters = nextStateData().keysDerivationPrivateParameters;
 			actors.entrySet().stream().forEach(e -> {
 				if(!e.getKey().equals(this.master)){
-					BigInteger betaiShare = betaiSharing.eval(e.getValue());
-					BigInteger RiShare = RiSharing.eval(e.getValue());
-					e.getKey().tell(new Messages.BetaiRiShares(betaiShare, RiShare), this.master);
+					e.getKey().tell(KeysDerivationPublicParameters.genFor(e.getValue(), privateParameters), this.master);
 				}
 			});
 		}));
 		
-		when(States.AWAITING_BETAi_Ri_SHARES, matchEvent(BetaiRiShares.class, (newShare, data) -> {
+		when(States.AWAITING_BETAi_Ri_SHARES, matchEvent(KeysDerivationPublicParameters.class, (newShare, data) -> {
 			
 			Map<ActorRef, Integer> actors = data.getParticipants();
 			Integer sender = actors.get(sender());
 			
-			KeysDerivationData nextData = data.withNewBetaiRiSharesFor(sender, newShare.betaiShare, newShare.RiShare);
+			KeysDerivationData nextData = data.withNewPublicParametersFor(sender, newShare);
 			
 			if(!nextData.hasBetaiRiOf(actors.values())) {
 				return stay().using(nextData);

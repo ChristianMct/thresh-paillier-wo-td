@@ -4,14 +4,9 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import org.bouncycastle.pqc.math.linearalgebra.IntegerFunctions;
-import org.omg.CORBA.INITIALIZE;
 
 import math.LagrangianInterpolation;
 import messages.Messages;
@@ -20,7 +15,6 @@ import messages.Messages.Participants;
 import protocol.BGWParameters.BGWPrivateParameters;
 import protocol.BGWParameters.BGWPublicParameters;
 import protocol.ProtocolParameters;
-import scala.concurrent.CanAwait;
 import actordata.BGWData;
 import actors.BGWProtocolActor.States;
 import akka.actor.AbstractLoggingFSM;
@@ -54,8 +48,7 @@ public class BGWProtocolActor extends AbstractLoggingFSM<States, BGWData>{
 																							protocolParameters,
 																							sr);
 					BGWPublicParameters bgwSelfShare = BGWPublicParameters.genFor(actors.get(this.master),
-																					bgwPrivateParameters,
-																					sr);
+																					bgwPrivateParameters);
 					
 					BGWData nextStateData = data.withPrivateParameters(bgwPrivateParameters)
 										.withNewShare(bgwSelfShare, actors.get(this.master))
@@ -133,7 +126,7 @@ public class BGWProtocolActor extends AbstractLoggingFSM<States, BGWData>{
 			if(from == States.INITILIZATION && to == States.BGW_AWAITING_PjQj) {
 				actors.entrySet().stream()
 				.filter(e -> !e.getKey().equals(this.master))
-				.forEach(e -> e.getKey().tell(BGWPublicParameters.genFor(e.getValue(), nextStateData().bgwPrivateParameters, sr), this.master));
+				.forEach(e -> e.getKey().tell(BGWPublicParameters.genFor(e.getValue(), nextStateData().bgwPrivateParameters), this.master));
 			}
 			
 			if(from == States.BGW_AWAITING_PjQj && to == States.BGW_AWAITING_Ni) {

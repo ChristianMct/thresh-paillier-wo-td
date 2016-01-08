@@ -83,15 +83,6 @@ public class Messages {
 		}
 	}
 	
-	public static class BetaiRiShares {
-		public final BigInteger betaiShare;
-		public final BigInteger RiShare;
-		public BetaiRiShares(BigInteger betaiShare, BigInteger RiShare) {
-			this.betaiShare = betaiShare;
-			this.RiShare = RiShare;
-		}
-	}
-	
 	public static class KeyDerivationResult {
 
 	}

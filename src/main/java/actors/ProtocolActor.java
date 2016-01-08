@@ -3,16 +3,15 @@ package actors;
 
 import java.util.Random;
 
-
 import messages.Messages.AcceptedN;
 import messages.Messages.BGWNPoint;
-import messages.Messages.BetaiRiShares;
 import messages.Messages.BiprimalityTestResult;
 import messages.Messages.CandidateN;
 import messages.Messages.KeyDerivationResult;
 import messages.Messages.Participants;
 import messages.Messages.QiTestForRound;
 import protocol.BGWParameters.BGWPublicParameters;
+import protocol.KeysDerivationParameters.KeysDerivationPublicParameters;
 import protocol.ProtocolParameters;
 import actordata.ProtocolData;
 import actors.ProtocolActor.States;
@@ -87,7 +86,7 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 				Thread.sleep(rand.nextInt(3));
 				biprimalTestActor.tell(evt, sender());
 			}
-			else if(evt instanceof BetaiRiShares) {
+			else if(evt instanceof KeysDerivationPublicParameters) {
 				Thread.sleep(rand.nextInt(3));
 				keysDerivationActor.tell(evt, sender());
 			}

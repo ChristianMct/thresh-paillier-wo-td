@@ -104,7 +104,7 @@ public class BGWParameters {
 			return true;
 		}
 		
-		public static BGWPublicParameters genFor(int j, BGWPrivateParameters bgwPrivParam, SecureRandom sr) {
+		public static BGWPublicParameters genFor(int j, BGWPrivateParameters bgwPrivParam) {
 			int i = bgwPrivParam.i;
 			BigInteger pj = bgwPrivParam.f.eval(j);
 			BigInteger qj = bgwPrivParam.g.eval(j);
