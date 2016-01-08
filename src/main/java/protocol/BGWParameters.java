@@ -3,22 +3,22 @@ package protocol;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
-import math.Polynomial;
+import math.PolynomialMod;
 
 public class BGWParameters {
 	
 	public static class BGWPrivateParameters {
 		public final BigInteger p;
 		public final BigInteger q;
-		public final Polynomial f;
-		public final Polynomial fp;
-		public final Polynomial g;
-		public final Polynomial gp;
-		public final Polynomial h;
-		public final Polynomial hp;
+		public final PolynomialMod f;
+		public final PolynomialMod fp;
+		public final PolynomialMod g;
+		public final PolynomialMod gp;
+		public final PolynomialMod h;
+		public final PolynomialMod hp;
 		private final int i;
 		
-		private BGWPrivateParameters(BigInteger p, BigInteger q,Polynomial f,Polynomial fp,Polynomial g,Polynomial gp,Polynomial h,Polynomial hp,int i ) {
+		private BGWPrivateParameters(BigInteger p, BigInteger q,PolynomialMod f,PolynomialMod fp,PolynomialMod g,PolynomialMod gp,PolynomialMod h,PolynomialMod hp,int i ) {
 			this.p = p;
 			this.q = q;
 			this.f = f;
@@ -50,21 +50,21 @@ public class BGWParameters {
 					! q.mod(four).equals(modFourTarget));
 			
 			// Injection of stuff
-			//p = i == 1 ? new BigInteger("2905983851") :  new BigInteger("46406792");
-			//q = i == 1 ? new BigInteger("23") :  new BigInteger("431972452");
+			p = i == 1 ? new BigInteger("2905983851") :  new BigInteger("46406792");
+			q = i == 1 ? new BigInteger("23") :  new BigInteger("431972452");
 			
 			// polynomials generation
 			BigInteger pp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
 			BigInteger qp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
 			BigInteger c0p = new BigInteger(protParam.k, sr).mod(protParam.Pp); //Correct ?
 			
-			Polynomial f = new Polynomial(protParam.t, protParam.Pp, p, sr, protParam.k);
-			Polynomial fp = new Polynomial(protParam.t, protParam.Pp, pp , sr, protParam.k);
-			Polynomial g = new Polynomial(protParam.t, protParam.Pp, q, sr, protParam.k);
-			Polynomial gp = new Polynomial(protParam.t, protParam.Pp, qp, sr, protParam.k);
+			PolynomialMod f = new PolynomialMod(protParam.t, protParam.Pp, p, protParam.k, sr);
+			PolynomialMod fp = new PolynomialMod(protParam.t, protParam.Pp, pp , protParam.k, sr);
+			PolynomialMod g = new PolynomialMod(protParam.t, protParam.Pp, q, protParam.k, sr);
+			PolynomialMod gp = new PolynomialMod(protParam.t, protParam.Pp, qp, protParam.k, sr);
 			
-			Polynomial h = new Polynomial(2*protParam.t, protParam.Pp, BigInteger.ZERO, sr, protParam.k); 
-			Polynomial hp = new Polynomial(2*protParam.t, protParam.Pp, c0p, sr, protParam.k);
+			PolynomialMod h = new PolynomialMod(2*protParam.t, protParam.Pp, BigInteger.ZERO, protParam.k, sr); 
+			PolynomialMod hp = new PolynomialMod(2*protParam.t, protParam.Pp, c0p, protParam.k, sr);
 			
 			
 			return new BGWPrivateParameters(p,q,f,fp,g,gp,h,hp,i);
@@ -98,8 +98,8 @@ public class BGWParameters {
 		}
 		
 		public boolean isCorrect(ProtocolParameters protocolParameters,int i,int j) {
-			BigInteger gPowPi = protocolParameters.g.modPow(pj, protocolParameters.Pp);
-			BigInteger hPowPpi = protocolParameters.h.modPow(ppj, protocolParameters.Pp);
+			//BigInteger gPowPi = protocolParameters.g.modPow(pj, protocolParameters.Pp);
+			//BigInteger hPowPpi = protocolParameters.h.modPow(ppj, protocolParameters.Pp);
 			
 			return true;
 		}

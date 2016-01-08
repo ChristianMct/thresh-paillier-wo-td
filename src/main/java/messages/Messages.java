@@ -5,16 +5,18 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
+import math.PolynomialSharing.Share;
+
 import org.omg.CORBA.PUBLIC_MEMBER;
 
 import protocol.BGWParameters.BGWPrivateParameters;
 import akka.actor.ActorRef;
 
-
+@SuppressWarnings("serial")
 public class Messages {
-	
+
+
 	public static class Complaint implements Serializable{
-		private static final long serialVersionUID = -1098299909396056849L;
 		public final int id;
 		public Complaint(int id) {
 			this.id = id;
@@ -22,7 +24,6 @@ public class Messages {
 	}
 	
 	public static class BGWNPoint implements Serializable {
-		private static final long serialVersionUID = 347073615387402156L;
 		public final BigInteger point;
 		public BGWNPoint(BigInteger point) {
 			this.point = point;
@@ -38,7 +39,6 @@ public class Messages {
 //	}
 	
 	public static class Participants implements Serializable {
-		private static final long serialVersionUID = 7032510981247682105L;
 		private final HashMap<ActorRef,Integer> participants;
 		public Participants(Map<ActorRef,Integer> participants) {
 			this.participants = new HashMap<ActorRef, Integer>(participants);
@@ -49,7 +49,6 @@ public class Messages {
 	}
 	
 	public static class CandidateN implements Serializable {
-		private static final long serialVersionUID = -8795987153165109384L;
 		public final BigInteger N;
 		public final BGWPrivateParameters bgwPrivateParameters;		
 		public CandidateN(BigInteger candidateN, BGWPrivateParameters bgwPrivateParameters) {
@@ -59,7 +58,6 @@ public class Messages {
 	}
 	
 	public static class QiTestForRound implements Serializable {
-		private static final long serialVersionUID = -9085928006292964488L;
 		public final BigInteger Qi;
 		public final int round;
 		public QiTestForRound(BigInteger Qi, int round) {
@@ -69,7 +67,6 @@ public class Messages {
 	}
 	
 	public static class BiprimalityTestResult implements Serializable {
-		private static final long serialVersionUID = -5915058380856792885L;
 		public BigInteger N;
 		public BGWPrivateParameters bgwPrivateParameters;
 		public boolean passes;
@@ -79,5 +76,27 @@ public class Messages {
 			this.bgwPrivateParameters = bgwPrivateParameters;
 			this.passes = passes;
 		}
+	}
+	
+	public static class AcceptedN implements Serializable {	
+		public final BigInteger N;
+		public final BigInteger phi;
+		public AcceptedN(BigInteger N, BigInteger phi) {
+			this.N = N;
+			this.phi = phi;
+		}
+	}
+	
+	public static class BetaiRiShares {
+		public final Share betaiShare;
+		public final Share RiShare;
+		public BetaiRiShares(Share betaiShare, Share RiShare) {
+			this.betaiShare = betaiShare;
+			this.RiShare = RiShare;
+		}
+	}
+	
+	public static class KeyDerivationResult {
+
 	}
 }

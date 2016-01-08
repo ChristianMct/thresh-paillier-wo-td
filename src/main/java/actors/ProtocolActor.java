@@ -3,9 +3,13 @@ package actors;
 
 import java.util.Random;
 
+
+import messages.Messages.AcceptedN;
 import messages.Messages.BGWNPoint;
+import messages.Messages.BetaiRiShares;
 import messages.Messages.BiprimalityTestResult;
 import messages.Messages.CandidateN;
+import messages.Messages.KeyDerivationResult;
 import messages.Messages.Participants;
 import messages.Messages.QiTestForRound;
 import protocol.BGWParameters.BGWPublicParameters;
@@ -18,14 +22,16 @@ import akka.actor.Props;
 
 public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 	
-	public static enum States {INITIALIZATION,BGW,BIPRIMAL_TEST};
+	public static enum States {INITIALIZATION,BGW,BIPRIMAL_TEST, KEYS_DERIVATION};
 	
 	private  ActorRef bgwActor;
 	private  ActorRef biprimalTestActor;
+	private  ActorRef keysDerivationActor;
 	
 	public ProtocolActor(ProtocolParameters protocolParams) {
 		bgwActor = context().actorOf(Props.create(BGWProtocolActor.class, protocolParams,self()), "BGWActor");
 		biprimalTestActor = context().actorOf(Props.create(BiprimalityTestActor.class, self()), "BiprimalityTestActor");
+		keysDerivationActor = context().actorOf(Props.create(KeysDerivationActor.class, self(), protocolParams), "KeysDerivationActor");
 		
 		startWith(States.INITIALIZATION, ProtocolData.init());
 		
@@ -33,6 +39,7 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 				(participants,data) -> {
 					//bgwActor.tell(participants, self());
 					biprimalTestActor.tell(participants, self());
+					keysDerivationActor.tell(participants, self());
 					return goTo(States.BGW).using(data.withParticipants(participants.getParticipants()));
 				}));
 		
@@ -49,7 +56,7 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 					
 					if(result.passes) {
 						System.out.println("FOUND N="+result.N);
-						return stop();
+						return goTo(States.KEYS_DERIVATION).using(data.withNewN(result.N, result.bgwPrivateParameters));
 					} else {
 						if(data.getParticipants().get(self())==1)
 							System.out.println("DID NOT PASS");
@@ -57,6 +64,17 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 						return goTo(States.BGW).using(data);
 					}
 		}));
+		
+		onTransition(matchState(States.BIPRIMAL_TEST, States.KEYS_DERIVATION, () -> {
+			keysDerivationActor.tell(new AcceptedN(nextStateData().N, null),  self());
+		}));
+		
+		when(States.KEYS_DERIVATION, matchEvent(KeyDerivationResult.class, (result, data) -> {
+			System.out.println("DONE !!!");
+			return stop();
+		}));
+		
+		
 		
 		
 		whenUnhandled(matchAnyEvent((evt,data) -> {
@@ -68,6 +86,10 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 			else if(evt instanceof QiTestForRound) {
 				Thread.sleep(rand.nextInt(3));
 				biprimalTestActor.tell(evt, sender());
+			}
+			else if(evt instanceof BetaiRiShares) {
+				Thread.sleep(rand.nextInt(3));
+				keysDerivationActor.tell(evt, sender());
 			}
 			else
 				System.out.println("CACA");

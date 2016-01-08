@@ -1,19 +1,17 @@
 package math;
 
 import java.math.BigInteger;
-import java.security.SecureRandom;
+import java.util.Random;
 
 public class Polynomial {
-
-	private final BigInteger[] a;
-	private final BigInteger mod;
 	
-	public Polynomial(int degree, BigInteger mod, BigInteger a0, SecureRandom sr, int numbit) {
-		this.mod = mod;
+	protected final BigInteger[] a;
+	
+	public Polynomial(int degree, BigInteger a0, int numbit, Random random) {
 		a = new BigInteger[degree+1];
-		a[0] = a0.mod(mod);
-		for(int t=1; t<=degree; t++) {
-			a[t] = new BigInteger(numbit,sr).mod(mod);
+		a[0] = a0;
+		for (int t=1; t <= degree; t++) {
+			a[t] = new BigInteger(numbit, random);
 		}
 	}
 	
@@ -23,13 +21,12 @@ public class Polynomial {
         BigInteger term;
         
         for(int i = 1;i < a.length;i++) {
-        	powx = new BigInteger(Integer.toString((int)Math.pow((double)x,(double)i)));
+        	powx = BigInteger.valueOf((long) Math.pow(x, i));
             term = a[i].multiply(powx);
-            term = term.mod(mod);
             result = result.add(term);
-            result = result.mod(mod);
         }
         return result;
 	}
+	
 	
 }
