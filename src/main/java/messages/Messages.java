@@ -74,16 +74,17 @@ public class Messages {
 		}
 	}
 	
-	public static class AcceptedN implements Serializable {	
-		public final BigInteger N;
-		public final BigInteger phi;
-		public AcceptedN(BigInteger N, BigInteger phi) {
-			this.N = N;
-			this.phi = phi;
+	public static class Thetai implements Serializable {
+		public final BigInteger thetai;
+		public Thetai(BigInteger thetai) {
+			this.thetai = thetai;
 		}
 	}
 	
-	public static class KeyDerivationResult {
-
+	public static class VerificationKey implements Serializable {
+		public final BigInteger verificationKey;
+		public VerificationKey(BigInteger verificationKey) {
+			this.verificationKey = verificationKey;
+		}
 	}
 }

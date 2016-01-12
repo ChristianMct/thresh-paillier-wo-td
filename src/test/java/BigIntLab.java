@@ -8,7 +8,11 @@ public class BigIntLab {
 		BigInteger exp = new BigInteger("3230376928485729304");
 		BigInteger N = new BigInteger("12921507716848901089");
 		
-		System.out.println(gp.modPow(exp, N));
+		
+		
+		System.out.println((BigInteger.valueOf(10)));
 	}
+	
+
 
 }

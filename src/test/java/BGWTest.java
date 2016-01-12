@@ -15,7 +15,7 @@ public class BGWTest {
 	public static void main(String[] args) throws InterruptedException {
 	    ActorSystem system = ActorSystem.create();
 	    
-	    ProtocolParameters protoParam = ProtocolParameters.gen(128,new SecureRandom());
+	    ProtocolParameters protoParam = ProtocolParameters.gen(128, 4, 10, new SecureRandom());
 	    
 	    Map<ActorRef,Integer> indexMap = new HashMap<ActorRef,Integer>(10);
 	    for(int i=1; i<=10; i++) {

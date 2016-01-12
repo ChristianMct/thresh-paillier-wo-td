@@ -3,13 +3,14 @@ package actors;
 
 import java.util.Random;
 
-import messages.Messages.AcceptedN;
 import messages.Messages.BGWNPoint;
 import messages.Messages.BiprimalityTestResult;
 import messages.Messages.CandidateN;
-import messages.Messages.KeyDerivationResult;
 import messages.Messages.Participants;
 import messages.Messages.QiTestForRound;
+import messages.Messages.Thetai;
+import messages.Messages.VerificationKey;
+import paillierp.key.PaillierPrivateThresholdKey;
 import protocol.BGWParameters.BGWPublicParameters;
 import protocol.KeysDerivationParameters.KeysDerivationPublicParameters;
 import protocol.ProtocolParameters;
@@ -65,10 +66,11 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 		}));
 		
 		onTransition(matchState(States.BIPRIMAL_TEST, States.KEYS_DERIVATION, () -> {
-			keysDerivationActor.tell(new AcceptedN(nextStateData().N, null),  self());
+			ProtocolData data = nextStateData();
+			keysDerivationActor.tell(new BiprimalityTestResult(data.N, data.bgwPrivateParameters, true),  self());
 		}));
 		
-		when(States.KEYS_DERIVATION, matchEvent(KeyDerivationResult.class, (result, data) -> {
+		when(States.KEYS_DERIVATION, matchEvent(PaillierPrivateThresholdKey.class, (key, data) -> {
 			System.out.println("DONE !!!");
 			return stop();
 		}));
@@ -86,11 +88,10 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 				Thread.sleep(rand.nextInt(3));
 				biprimalTestActor.tell(evt, sender());
 			}
-			else if(evt instanceof KeysDerivationPublicParameters) {
+			else if(evt instanceof KeysDerivationPublicParameters || evt instanceof Thetai || evt instanceof VerificationKey) {
 				Thread.sleep(rand.nextInt(3));
 				keysDerivationActor.tell(evt, sender());
-			}
-			else
+			} else
 				System.out.println("CACA");
 			
 			return stay();
