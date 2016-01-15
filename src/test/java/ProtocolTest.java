@@ -15,7 +15,7 @@ public class ProtocolTest {
 	public static void main(String[] args) throws InterruptedException {
 	    ActorSystem system = ActorSystem.create();
 	    
-	    ProtocolParameters protoParam = ProtocolParameters.gen(64, 4, 10, new SecureRandom());
+	    ProtocolParameters protoParam = ProtocolParameters.gen(32, 4, 10, new SecureRandom());
 	    System.out.println("Pp="+protoParam.Pp);
 	    
 	    Map<ActorRef,Integer> indexMap = new HashMap<ActorRef,Integer>(10);
