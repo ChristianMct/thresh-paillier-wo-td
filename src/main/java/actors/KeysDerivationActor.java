@@ -146,14 +146,15 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 																				2*protocolParameters.k,
 																				new SecureRandom(theta.toByteArray())); //TODO ok ?
 				
-				BigInteger secreti = newData.N.multiply(newData.Rpoint).subtract(thetap);
+				BigInteger secreti = thetap.subtract(newData.N.multiply(newData.Rpoint));
 				BigInteger delta = IntegersUtils.factorial(BigInteger.valueOf(protocolParameters.n));
 				
 				BigInteger verificationKeyi = v.modPow(delta.multiply(secreti), newData.N.multiply(newData.N));
 				
 				return goTo(States.AWAITING_VERIF_KEYS).using(newData.withNewVerificationKeyFor(self, verificationKeyi)
 																		.withNewV(v)
-																		.withFi(secreti));
+																		.withFi(secreti)
+																		.withThetaprime(thetap));
 			}
 		}));
 		
@@ -177,9 +178,10 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 					verificationKeys[entry.getKey()-1] = entry.getValue();
 				}
 				
-				PaillierPrivateThresholdKey privateKey = new PaillierPrivateThresholdKey(newData.N, 
+				PaillierPrivateThresholdKey privateKey = new PaillierPrivateThresholdKey(newData.N,
+																							newData.thetaprime,
 																							protocolParameters.n, 
-																							protocolParameters.t,
+																							protocolParameters.t+1,
 																							newData.v, 
 																							verificationKeys, 
 																							newData.fi, 

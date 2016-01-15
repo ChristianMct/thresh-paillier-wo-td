@@ -53,6 +53,7 @@ public class PaillierKeysTest {
 		BigInteger N = publickey.getN();
 		BigInteger Ns = N.multiply(N);
 		BigInteger G = publickey.getNPlusOne();
+		BigInteger thetap = decryptionServers.get(1).getPrivateKey().getThetaPrime();
 		BigInteger x = new BigInteger(publickey.getK(), new Random(1)).mod(N).modInverse(N);
 		
 		BigInteger cipher = G.modPow(M, Ns).multiply(x.modPow(N, Ns)).mod(Ns);
@@ -83,9 +84,8 @@ public class PaillierKeysTest {
 			prod = prod.multiply(pd.getDecryptedValue().modPow(two.multiply(delta).multiply(lambda(pd.getID(), partDec)), Ns));
 		
 		BigInteger L = prod.subtract(BigInteger.ONE).divide(N);
-		BigInteger thetap = new BigInteger("10472521621810380483303987645571114260096187428529267200");
 		BigInteger theta = thetap.mod(N);
-		BigInteger cst = ((BigInteger.valueOf(-4).multiply(delta.multiply(delta))).multiply(thetap)).modInverse(N);
+		BigInteger cst = BigInteger.valueOf(4).multiply(delta.multiply(delta)).multiply(thetap).modInverse(N);
 		
 		BigInteger DM = (L.multiply(cst)).mod(N);
 		BigInteger udDM = decryptionServers.get(1).combineShares(partDec);
