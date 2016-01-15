@@ -9,6 +9,7 @@ import java.util.stream.Stream;
 
 import protocol.KeysDerivationParameters.KeysDerivationPrivateParameters;
 import protocol.KeysDerivationParameters.KeysDerivationPublicParameters;
+import scala.math.BigInt;
 import akka.actor.ActorRef;
 
 public class KeysDerivationData extends Data{
@@ -16,6 +17,7 @@ public class KeysDerivationData extends Data{
 	public final BigInteger N;
 	public final BigInteger Rpoint;
 	public final BigInteger v;
+	public final BigInteger fi;
 	public final KeysDerivationPrivateParameters keysDerivationPrivateParameters;
 	private final Map<Integer, KeysDerivationPublicParameters> publicParameters;
 	public final Map<Integer, BigInteger> thetas;
@@ -25,6 +27,7 @@ public class KeysDerivationData extends Data{
 								BigInteger N,
 								BigInteger Rpoint,
 								BigInteger v,
+								BigInteger fi,
 								KeysDerivationPrivateParameters keysDerivationPrivateParameters,
 								Map<Integer, KeysDerivationPublicParameters> publicParameters,
 								Map<Integer, BigInteger> thetas,
@@ -34,6 +37,7 @@ public class KeysDerivationData extends Data{
 		this.N = N;
 		this.Rpoint = Rpoint;
 		this.v = v;
+		this.fi = fi;
 		this.keysDerivationPrivateParameters = keysDerivationPrivateParameters;
 		this.publicParameters = publicParameters != null ? new HashMap<Integer, KeysDerivationPublicParameters>(publicParameters) : null;
 		this.thetas = thetas != null ? new HashMap<Integer, BigInteger>(thetas) : null;
@@ -57,15 +61,19 @@ public class KeysDerivationData extends Data{
 	}
 	
 	public KeysDerivationData withParticipants(Map<ActorRef,Integer> participants) {
-		return new KeysDerivationData(participants, N, Rpoint, v, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
+		return new KeysDerivationData(participants, N, Rpoint, v, fi, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
 	}
 
 	public KeysDerivationData withN(BigInteger N) {
-		return new KeysDerivationData(participants, N, Rpoint, v, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
+		return new KeysDerivationData(participants, N, Rpoint, v, fi, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
 	}
 	
 	public KeysDerivationData withPrivateParameters(KeysDerivationPrivateParameters keysDerivationPrivateParameters) {
-		return new KeysDerivationData(participants, N, Rpoint, v, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
+		return new KeysDerivationData(participants, N, Rpoint, v, fi, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
+	}
+	
+	public KeysDerivationData withFi(BigInteger fi) {
+		return new KeysDerivationData(participants, N, Rpoint, v, fi, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
 	}
 	
 	public KeysDerivationData withNewPublicParametersFor(int j, KeysDerivationPublicParameters keysDerivationPublicParameters) {
@@ -78,15 +86,15 @@ public class KeysDerivationData extends Data{
 
 		
 		newBetasMap.put(j, keysDerivationPublicParameters);
-		return new KeysDerivationData(participants, N, Rpoint, v, keysDerivationPrivateParameters, newBetasMap, thetas, verificationKeys);
+		return new KeysDerivationData(participants, N, Rpoint, v,fi, keysDerivationPrivateParameters, newBetasMap, thetas, verificationKeys);
 	}
 	
 	public KeysDerivationData withRPoint(BigInteger RPoint) {
-		return new KeysDerivationData(participants, N, RPoint, v, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
+		return new KeysDerivationData(participants, N, RPoint, v,fi, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
 	}
 	
 	public KeysDerivationData withNewV(BigInteger v) {
-		return new KeysDerivationData(participants, N, Rpoint, v, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
+		return new KeysDerivationData(participants, N, Rpoint, v,fi, keysDerivationPrivateParameters, publicParameters, thetas, verificationKeys);
 	}
 	
 	public KeysDerivationData withNewThetaFor(int j, BigInteger theta) {
@@ -97,7 +105,7 @@ public class KeysDerivationData extends Data{
 		HashMap<Integer, BigInteger> newThetaMap = this.thetas != null ? new HashMap<Integer, BigInteger>(thetas) :
 																		new HashMap<Integer, BigInteger>();
 		newThetaMap.put(j, theta);
-		return new KeysDerivationData(participants, N, Rpoint, v, keysDerivationPrivateParameters, publicParameters, newThetaMap, verificationKeys);
+		return new KeysDerivationData(participants, N, Rpoint, v,fi, keysDerivationPrivateParameters, publicParameters, newThetaMap, verificationKeys);
 	}
 	
 	public KeysDerivationData withNewVerificationKeyFor(int j, BigInteger newVerifKey) {
@@ -108,12 +116,12 @@ public class KeysDerivationData extends Data{
 		HashMap<Integer, BigInteger> newVKMap = this.verificationKeys != null ? new HashMap<Integer, BigInteger>(verificationKeys) :
 																		new HashMap<Integer, BigInteger>();
 		newVKMap.put(j, newVerifKey);
-		return new KeysDerivationData(participants, N, Rpoint, v, keysDerivationPrivateParameters, publicParameters, thetas, newVKMap);
+		return new KeysDerivationData(participants, N, Rpoint, v,fi, keysDerivationPrivateParameters, publicParameters, thetas, newVKMap);
 	}
 
 	
 	public static KeysDerivationData init() {
-		return new KeysDerivationData(null, null, null, null, null, null, null,null);
+		return new KeysDerivationData(null, null, null, null, null, null, null, null,null);
 	}
 
 }

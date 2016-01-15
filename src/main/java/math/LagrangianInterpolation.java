@@ -13,8 +13,8 @@ public class LagrangianInterpolation {
 			int denominator = 1;
 			for(int m=1; m<=k; m++){
 				if (m != j) {
-					numerator *= m;
-					denominator *= (m-j);
+					numerator *= -m;
+					denominator *= (j-m);
 				}
 			}
 			BigInteger lambdaj = BigInteger.valueOf(numerator/denominator);

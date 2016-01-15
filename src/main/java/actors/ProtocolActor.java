@@ -1,6 +1,9 @@
 package actors;
 
 
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectOutputStream;
 import java.util.Random;
 
 import messages.Messages.BGWNPoint;
@@ -71,7 +74,11 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 		}));
 		
 		when(States.KEYS_DERIVATION, matchEvent(PaillierPrivateThresholdKey.class, (key, data) -> {
-			System.out.println("DONE !!!");
+			DataOutputStream out = new DataOutputStream(new FileOutputStream("keys/"+self().path().name()+".privkey"));
+			out.write(key.toByteArray());
+			out.close();
+			
+			System.out.println(key.getID()+" DONE !!!");
 			return stop();
 		}));
 		
@@ -91,8 +98,7 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 			else if(evt instanceof KeysDerivationPublicParameters || evt instanceof Thetai || evt instanceof VerificationKey) {
 				Thread.sleep(rand.nextInt(3));
 				keysDerivationActor.tell(evt, sender());
-			} else
-				System.out.println("CACA");
+			}
 			
 			return stay();
 		}));

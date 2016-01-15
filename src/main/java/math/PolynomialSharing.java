@@ -40,13 +40,13 @@ public class PolynomialSharing {
 		
 		public PolynomialSharing share(BigInteger sharee, int degree) {
 			Polynomial f = new Polynomial(degree, sharee, bitLength, random);
-			Polynomial h = new Polynomial(degree, BigInteger.ZERO, bitLength, random);
+			Polynomial h = new Polynomial(2*degree, BigInteger.ZERO, bitLength, random);
 			return new PolynomialSharing(f, h);
 		}
 		
 		public PolynomialSharing shareMod(BigInteger sharee, int degree, BigInteger mod) {
 			PolynomialMod f = new PolynomialMod(degree, mod, sharee, bitLength, random);
-			PolynomialMod h = new PolynomialMod(degree, mod, BigInteger.ZERO, bitLength, random);
+			PolynomialMod h = new PolynomialMod(2*degree, mod, BigInteger.ZERO, bitLength, random);
 			return new PolynomialSharing(f, h);
 		}
 	}

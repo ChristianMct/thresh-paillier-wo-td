@@ -50,8 +50,8 @@ public class BGWParameters {
 					! q.mod(four).equals(modFourTarget));
 			
 			// Injection of stuff
-			p = i == 1 ? new BigInteger("2905983851") :  new BigInteger("46406792");
-			q = i == 1 ? new BigInteger("23") :  new BigInteger("431972452");
+			//p = i == 1 ? new BigInteger("2905983851") :  new BigInteger("46406792");
+			//q = i == 1 ? new BigInteger("23") :  new BigInteger("431972452");
 			
 			// polynomials generation
 			

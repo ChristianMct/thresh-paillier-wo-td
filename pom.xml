@@ -16,12 +16,5 @@
 		<artifactId>bcprov-jdk15on</artifactId>
 		<version>1.53</version>
 	</dependency>
-	<dependency>
-    	<groupId>paillierp</groupId>
-	    <artifactId>PaillierP</artifactId>
-	    <version>1.0.0</version>
-	    <scope>system</scope>
-	    <systemPath>${basedir}/lib/paillier.jar</systemPath>
-	</dependency>
   </dependencies>
 </project>

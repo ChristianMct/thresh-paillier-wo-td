@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Map.Entry;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -52,8 +53,8 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 			BigInteger pi = acceptedN.bgwPrivateParameters.p;
 			BigInteger qi = acceptedN.bgwPrivateParameters.q;
 			
-			BigInteger Phii = self == 1 ? N.subtract(pi).subtract(qi).add(BigInteger.ONE).mod(protocolParameters.Pp) :
-											pi.negate().subtract(qi).mod(protocolParameters.Pp);
+			BigInteger Phii = self == 1 ? N.subtract(pi).subtract(qi).add(BigInteger.ONE):
+											pi.negate().subtract(qi);
 
 			KeysDerivationPrivateParameters keysDerivationPrivateParameters = KeysDerivationPrivateParameters.gen(protocolParameters, self, N, Phii, rand);
 			
@@ -91,24 +92,30 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 				
 				Stream<Entry<Integer, KeysDerivationPublicParameters>> publicParameters = nextData.publicParameters();
 				
-				BigInteger betaPointi = publicParameters.map(e -> e.getValue().betaij.getSum())
-													.reduce(BigInteger.ZERO, (b1, b2) -> b1.add(b1));
-				publicParameters = nextData.publicParameters();
-				BigInteger RPointi = publicParameters.map(e -> e.getValue().Rij.getSum())
+				BigInteger betaPointi = publicParameters.map(e -> e.getValue().betaij.fij)
 													.reduce(BigInteger.ZERO, (b1, b2) -> b1.add(b2));
 				publicParameters = nextData.publicParameters();
-				BigInteger PhiPointi = publicParameters.map(e -> e.getValue().Phiij.getSum())
+				BigInteger DRPointi = publicParameters.map(e -> e.getValue().DRij.fij)
 													.reduce(BigInteger.ZERO, (b1, b2) -> b1.add(b2));
+				publicParameters = nextData.publicParameters();
+				BigInteger PhiPointi = publicParameters.map(e -> e.getValue().Phiij.fij)
+													.reduce(BigInteger.ZERO, (b1, b2) -> b1.add(b2));
+				publicParameters = nextData.publicParameters();
 				
-				PolynomialMod h = new PolynomialMod(2*protocolParameters.t, protocolParameters.Pp, BigInteger.ZERO, protocolParameters.k, rand);
+				BigInteger hij = publicParameters.map(e -> e.getValue().Phiij.hij)
+						.reduce(BigInteger.ZERO, (b1, b2) -> b1.add(b2));
+				
+						//new PolynomialMod(2*protocolParameters.t, protocolParameters.Pp, BigInteger.ZERO, protocolParameters.k, rand);
 				
 				BigInteger delta = IntegersUtils.factorial(BigInteger.valueOf(protocolParameters.n));
-				BigInteger thetai =  delta.multiply(PhiPointi).multiply(betaPointi).mod(protocolParameters.Pp)
-											.add(nextData.N.multiply(RPointi).mod(protocolParameters.Pp))
-											.add(h.eval(self)); //TODO: multiply h(i)
+				
+				
+				BigInteger thetai =  (delta.multiply(PhiPointi).multiply(betaPointi).mod(protocolParameters.Pp))
+											.add(nextData.N.multiply(DRPointi).mod(protocolParameters.Pp))
+											.add(hij).mod(protocolParameters.Pp);
 				
 				return goTo(States.AWAITING_THETAiS).using(nextData.withNewThetaFor(self, thetai)
-																	.withRPoint(RPointi));
+																	.withRPoint(DRPointi));
 			}
 			
 		}));
@@ -133,7 +140,7 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 				BigInteger thetap = LagrangianInterpolation.getIntercept(thetas, protocolParameters.Pp);
 				BigInteger theta = thetap.mod(newData.N);
 				
-				System.out.println("THETA="+theta);
+				System.out.println("THETAP="+thetap);
 				
 				BigInteger v = IntegersUtils.pickProbableGeneratorOfZNSquare(newData.N,
 																				2*protocolParameters.k,
@@ -145,7 +152,8 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 				BigInteger verificationKeyi = v.modPow(delta.multiply(secreti), newData.N.multiply(newData.N));
 				
 				return goTo(States.AWAITING_VERIF_KEYS).using(newData.withNewVerificationKeyFor(self, verificationKeyi)
-																		.withNewV(v));
+																		.withNewV(v)
+																		.withFi(secreti));
 			}
 		}));
 		
@@ -164,10 +172,9 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 				return stay().using(newData);
 			} else {
 				
-				BigInteger[] verificationKeys = new BigInteger[protocolParameters.n+1];
-				verificationKeys[0] = BigInteger.ZERO;
+				BigInteger[] verificationKeys = new BigInteger[protocolParameters.n];
 				for (Entry<Integer, BigInteger> entry : newData.verificationKeys.entrySet()) {
-					verificationKeys[entry.getKey()] = entry.getValue();
+					verificationKeys[entry.getKey()-1] = entry.getValue();
 				}
 				
 				PaillierPrivateThresholdKey privateKey = new PaillierPrivateThresholdKey(newData.N, 
@@ -175,7 +182,7 @@ public class KeysDerivationActor extends AbstractLoggingFSM<States, KeysDerivati
 																							protocolParameters.t,
 																							newData.v, 
 																							verificationKeys, 
-																							newData.Rpoint, 
+																							newData.fi, 
 																							self, 
 																							rand.nextLong()); // WOOT ?!
 				this.master.tell(privateKey, self());
