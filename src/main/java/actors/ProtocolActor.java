@@ -1,6 +1,7 @@
 package actors;
 
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 
 import messages.Messages.BGWNPoint;
@@ -104,6 +105,7 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 		}));
 		
 		when(States.KEYS_DERIVATION, matchEvent(PaillierPrivateThresholdKey.class, (key, data) -> {
+			new File("keys").mkdirs();
 			DataOutputStream out = new DataOutputStream(new FileOutputStream("keys/"+self().path().name()+".privkey"));
 			out.write(key.toByteArray());
 			out.close();
