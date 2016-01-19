@@ -112,7 +112,10 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 			
 			System.out.println(self().path()+" DONE");
 			bgwActor.tell(PoisonPill.getInstance(), self());
-			context().system().shutdown();
+			if(data.getParticipants().get(self()) == 1){
+				Thread.sleep(1000);
+				context().system().shutdown();
+			}
 			return stop();
 		}));
 		
