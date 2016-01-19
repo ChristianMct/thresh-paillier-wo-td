@@ -1,44 +1,67 @@
 package protocol;
 
 import java.math.BigInteger;
-import java.security.SecureRandom;
 import java.util.Random;
 
+import math.IntegersUtils;
+
+/**
+ * Provides structure for, and generation of, the parameters of distributed Threshold Paillier key generation protocol .
+ * @author Christian Mouchet
+ */
 public class ProtocolParameters {
 	
+	/** Large prime P' used for secret sharing with polynomials over the integer mod P' */
 	public final BigInteger P;
-	public final BigInteger Pp;
-	public final BigInteger g;
-	public final BigInteger gp;
-	public final BigInteger h;
-	public final int t;
-	public final int k;
-	public final int K;
+	
+	/**The number of parties in the key generation protocol*/
 	public final int n;
+	
+	/** The maximum number of parties an adversary can corrupt without breaking the security of the protocol*/
+	public final int t;
+	
+	/** The bitlength of p and q, so that N has a security of 2k */
+	public final int k;
+	
+	/** The security of the statistical hiding of &Phi;(N) with &Beta; and R */
+	public final int K;
 
-	private ProtocolParameters(BigInteger P, BigInteger Pp, BigInteger g, BigInteger gp, BigInteger h, int t, int k, int K, int n) {
-		this.P = P;
-		this.Pp = Pp;
-		this.g = g;
-		this.gp = gp;
-		this.h = h;
+	private ProtocolParameters(BigInteger Pp, int t, int k, int K, int n) {
+		this.P = Pp;
 		this.t = t;
 		this.k = k;
 		this.K = K;
 		this.n = n;
 	}
 	
-	public static ProtocolParameters gen(int k, int t, int n,SecureRandom sr) {
-		BigInteger Pp = new BigInteger("43661658899963406608383637340196977962122829941011847601528077076668470132290990200968125083014971338133392588979");
-		BigInteger P = null;//new BigInteger("8208391873193120442376123819957031856879092028910227349087278490413672384870706157782007515606814611569077806728053");
-		BigInteger g = null;//new BigInteger("372223741455328186459978054469800111530408682317511647391519328038886770606432351748879444689126472561350420501");
-		BigInteger h = null;//new BigInteger("41882225770559995570059604591701087241268749365485546402758167539038856425273885483351238739958821766359906783652");
-		return new ProtocolParameters(P, Pp, g, null,h, t, k, 1000, n);
-	}
-	
-	public static ProtocolParameters generate(int k, int t, int n, Random random) {
-		BigInteger Pp = BigInteger.probablePrime(k, random);
-		return new ProtocolParameters(null, Pp, null, null, null, t, k, 1000, n);
+	/** Generates the parameters for n parties, t of which can be corrupted without breaking the security.
+	 * @param k the bitlength of p and q, such that N has a security of 2k
+	 * @param n The number of parties
+	 * @param t The maximum number of parties an adversary can corrupt without breaking the security of the protocol. Must be < <code>n/2</code>
+	 * @param random a randomness generator
+	 * @return the protocol parameters structure
+	 */
+	public static ProtocolParameters gen(int k, int n, int t, Random random) {
+		
+		if (k < 16)
+			throw new IllegalArgumentException("k should be at least 16");
+		if (n < 3)
+			throw new IllegalArgumentException("n should be at least 3");
+		if (t > n/2)
+			throw new IllegalArgumentException("t should be smaller than n/2");
+		if (random == null)
+			throw new IllegalArgumentException("random cannot be null");
+		
+		int fact = k < 512 ? 4 : 1;
+		BigInteger np = BigInteger.valueOf(n);
+		BigInteger three = BigInteger.valueOf(3);
+		BigInteger maxN = BigInteger.valueOf(2).pow(fact*k-1); //TODO: the formula for min Pp given in the paper does not work. Add a factor on the bitlen is a quick, dirty fix
+		BigInteger minPp = np.multiply(three.multiply(maxN)).pow(2);
+		BigInteger maxPp = BigInteger.valueOf(2).pow(minPp.bitLength()+1);
+		
+		System.out.println("Generating P' ...");
+		BigInteger Pp = IntegersUtils.pickPrimeInRange(minPp, maxPp, random);
+		return new ProtocolParameters(Pp, t, k, 1000, n);
 	}
 	
 }

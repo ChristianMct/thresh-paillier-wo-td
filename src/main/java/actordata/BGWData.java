@@ -10,11 +10,20 @@ import akka.actor.ActorRef;
 import protocol.BGWParameters.BGWPrivateParameters;
 import protocol.BGWParameters.BGWPublicParameters;
 
+/** Represents the state data of the BGW protocol Actor's FSM.
+ * <p>
+ * This is an immutable object type in order to comply to the Akka good practices regarding FSMs.
+ * @author Christian Mouchet
+ */
 public class BGWData extends Data{
+	
+	/** The BGW private parameters selected by the actor in the BGW protocol (p<sub>i</sub>, q<sub>i</sub>, ...)*/
 	public final BGWPrivateParameters bgwPrivateParameters;
-	private final Map<Integer,BGWPublicParameters> bgwPublicParameters;
+	
+	/** Collection of the recieved shares of N*/
 	public final Map<Integer,BigInteger> Ns;
 
+	private final Map<Integer,BGWPublicParameters> bgwPublicParameters;
 	
 	private BGWData(Map<ActorRef,Integer> participants,
 					BGWPrivateParameters bgwPrivateParameters,

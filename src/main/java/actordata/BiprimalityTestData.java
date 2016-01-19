@@ -9,13 +9,23 @@ import java.util.stream.Stream;
 import protocol.BGWParameters.BGWPrivateParameters;
 import akka.actor.ActorRef;
 
+/** Represents the state data of the Biprimality test protocol actor's FSM.
+ * <p>
+ * This is an immutable object type in order to comply to the Akka good practices regarding FSMs.
+ * @author Christian Mouchet
+ */
+@SuppressWarnings("unchecked")
 public class BiprimalityTestData extends Data{
 
 	private final Map<Integer, BigInteger>[] Qs;
+	/** Current candidate to RSA modulus*/
 	public final BigInteger N;
+	/** Round number in the Biprimality test*/
 	public final int round;
+	/** BGW private parameters associated with the current candidate to RSA modulus*/
 	public final BGWPrivateParameters bgwPrivateParameters;
 	
+
 	private BiprimalityTestData(Map<ActorRef, Integer> participants,
 			BigInteger N,
 			BGWPrivateParameters bgwPrivateParameters,
@@ -33,7 +43,7 @@ public class BiprimalityTestData extends Data{
 	}
 	
 	public static BiprimalityTestData init() {
-		Map[] Qs = new HashMap[2];
+		Map<Integer, BigInteger>[] Qs = new HashMap[2];
 		Qs[0] = new HashMap<Integer, BigInteger>();
 		Qs[1] = new HashMap<Integer, BigInteger>();
 		return new BiprimalityTestData(null,
@@ -66,7 +76,7 @@ public class BiprimalityTestData extends Data{
 		Map<Integer, BigInteger> newMap = new HashMap<Integer, BigInteger>(Qs[round%2]);
 		newMap.put(fromId, Qi);
 		
-		Map[] newQs = new HashMap[2];
+		Map<Integer, BigInteger>[] newQs = new HashMap[2];
 		newQs[round%2] = newMap;
 		newQs[(round+1)%2] = Qs[(round+1)%2];
 		

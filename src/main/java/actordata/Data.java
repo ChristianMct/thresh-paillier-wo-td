@@ -9,6 +9,7 @@ import akka.actor.ActorRef;
 /**
  * This is the abstract superclass of data-structures held by the different FSMs modeling the protocol.
  * <p>
+ * This is an immutable object type in order to comply to the Akka good practices regarding FSMs.
  * @author Christian Mouchet
  */
 public abstract class Data {

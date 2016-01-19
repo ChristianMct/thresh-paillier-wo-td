@@ -1,37 +1,69 @@
 package protocol;
 
 import java.math.BigInteger;
-import java.security.SecureRandom;
+import java.util.Random;
 
 import math.PolynomialMod;
 
-public class BGWParameters {
+/**
+ * Provide structures for, and generation of, parameters of the BGW protocol.
+ * <p>
+ * This is the abstract super-type of two concrete parameters structures:
+ * <ul><li> {@link BGWPrivateParameters} represents the private parameters one party generates in the BGW protocol
+ * <li> {@link BGWPublicParameters} is the structure used by parties when exchanging their shares
+ * <p>
+ * @author Christian Mouchet
+ */
+public abstract class BGWParameters {
+	/** The id of the party. i &in; [1;N]*/
+	public final int i;
+	/** the number of parties*/
+	public final int n;
 	
-	public static class BGWPrivateParameters {
-		public final BigInteger p;
-		public final BigInteger q;
-		public final PolynomialMod f;
-		public final PolynomialMod g;
-		public final PolynomialMod h;
-		//public final PolynomialMod fp;
-		//public final PolynomialMod gp;
-		//public final PolynomialMod hp;
-		private final int i;
+	private BGWParameters(int i, int n) {
+		this.i = i;
+		this.n = n;
+	}
+	
+	/**
+	 * The structure of private contributions of a parti in the BGW protocol.
+	 * @author Christian Mouchet
+	 */
+	public static class BGWPrivateParameters extends BGWParameters {
+		/** The contribution of party Pi to p = &sum;<sup>N</sup><sub>i=1</sub>   pi*/
+		public final BigInteger pi;
 		
-		private BGWPrivateParameters(int i, BigInteger p, BigInteger q,PolynomialMod f, PolynomialMod g, PolynomialMod h/*, PolynomialMod fp,PolynomialMod gp,PolynomialMod hp*/) {
-			this.p = p;
-			this.q = q;
-			this.f = f;
-			this.g = g;
-			this.h = h;
-			this.i = i;
-			//this.fp = fp;
-			//this.gp = gp;
-			//this.hp = hp;
+		/** The contribution of party Pi to q = &sum;<sup>N</sup><sub>i=1</sub>   qi*/
+		public final BigInteger qi;
+		
+		/** The polynomial used to share pi*/
+		public final PolynomialMod fi;
+		
+		/** The polynomial used to share qi*/
+		public final PolynomialMod gi;
+		
+		/** The polynomial used to share Ni*/
+		public final PolynomialMod hi;
+		
+		private BGWPrivateParameters(int i, int n, BigInteger p, BigInteger q,PolynomialMod f, PolynomialMod g, PolynomialMod h) {
+			super(i,n);
+			this.pi = p;
+			this.qi = q;
+			this.fi = f;
+			this.gi = g;
+			this.hi = h;
 		}
 		
-		public static BGWPrivateParameters genFor(int i,ProtocolParameters protParam, SecureRandom sr) {
+		/** Generates the private parameters for a given party in the BGW protocol
+		 * @param i the id of the party. i &in; [1,n], n the number of parties
+		 * @param protParam the security parameters
+		 * @param rand a randomness generator
+		 * @return the generated parameters
+		 */
+		public static BGWPrivateParameters genFor(int i, ProtocolParameters protParam, Random rand) {
 			
+			if (i < 1 || i > protParam.n)
+				throw new IllegalArgumentException("i must be between 1 and the number of parties");
 			
 			// p and q generation
 			BigInteger p;
@@ -42,79 +74,82 @@ public class BGWParameters {
 			BigInteger modFourTarget = i == 1 ? BigInteger.valueOf(3) : BigInteger.ZERO;
 			
 			do {
-				p = min.add(new BigInteger(protParam.k-1, sr));
-				q = min.add(new BigInteger(protParam.k-1, sr));
+				p = min.add(new BigInteger(protParam.k-1, rand));
+				q = min.add(new BigInteger(protParam.k-1, rand));
 			} while(p.compareTo(max) > 0 ||
 					q.compareTo(max) > 0 ||
 					! p.mod(four).equals(modFourTarget) ||
 					! q.mod(four).equals(modFourTarget));
 			
-			// Injection of stuff
-			//p = i == 1 ? new BigInteger("2905983851") :  new BigInteger("46406792");
-			//q = i == 1 ? new BigInteger("23") :  new BigInteger("431972452");
-			
 			// polynomials generation
 			
-			PolynomialMod f = new PolynomialMod(protParam.t, protParam.Pp, p, protParam.k, sr);
-			PolynomialMod g = new PolynomialMod(protParam.t, protParam.Pp, q, protParam.k, sr);
-			PolynomialMod h = new PolynomialMod(2*protParam.t, protParam.Pp, BigInteger.ZERO, protParam.k, sr); 
+			PolynomialMod f = new PolynomialMod(protParam.t, protParam.P, p, protParam.k, rand);
+			PolynomialMod g = new PolynomialMod(protParam.t, protParam.P, q, protParam.k, rand);
+			PolynomialMod h = new PolynomialMod(2*protParam.t, protParam.P, BigInteger.ZERO, protParam.k, rand); 
 			
-//			BigInteger pp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
-//			BigInteger qp = new BigInteger(protParam.k, sr).mod(protParam.Pp);
-//			BigInteger c0p = new BigInteger(protParam.k, sr).mod(protParam.Pp); //Correct ?			
-//			PolynomialMod fp = new PolynomialMod(protParam.t, protParam.Pp, pp , protParam.k, sr);
-//			PolynomialMod gp = new PolynomialMod(protParam.t, protParam.Pp, qp, protParam.k, sr);			
-//			PolynomialMod hp = new PolynomialMod(2*protParam.t, protParam.Pp, c0p, protParam.k, sr);
-			
-			
-			return new BGWPrivateParameters(i, p, q, f, g, h/*, fp, gp, hp*/);
+			return new BGWPrivateParameters(i, protParam.n, p, q, f, g, h);
 		}
 		
+		@Override
 		public String toString() {
 			return String.format("BGWPrivateParameters[%d]", i);
 		}
 		
 	}
 	
-	public static class BGWPublicParameters {
-		private final int i;
-		private final int j;
-		public final BigInteger pj;
-		public final BigInteger qj;
-		public final BigInteger hj;
-//		public final BigInteger qpj;
-//		public final BigInteger ppj;
-//		public final BigInteger hpj;
+	/**
+	 * The structure used by the parties to exchange their shares.
+	 * @author Christian Mouchet
+	 */
+	public static class BGWPublicParameters extends BGWParameters {
+
+		/** The id of the party for which these shares were generated*/
+		public final int j;
 		
-		private BGWPublicParameters(int i, int j, BigInteger pj, BigInteger qj, BigInteger hj/*, BigInteger ppj, BigInteger qpj, BigInteger hpj,*/) {
-			this.pj = pj;
-			this.qj = qj;
-			this.hj = hj;
+		/** The share pij = f(j) of party i's pi generated for party j*/
+		public final BigInteger pij;
+		
+		/** The share qij = g(j) of party i's qi generated for party j*/
+		public final BigInteger qij;
+		
+		/** The share hij = h(j) of party i's zero generated for party j*/
+		public final BigInteger hij;
+
+		private BGWPublicParameters(int i, int j, int n, BigInteger pj, BigInteger qj, BigInteger hj) {
+			super(i, n);
+			this.pij = pj;
+			this.qij = qj;
+			this.hij = hj;
 			this.j = j;
-			this.i = i;
-//			this.ppj = ppj;
-//			this.qpj = qpj;
-//			this.hpj = hpj;
 		}
 		
-		public boolean isCorrect(ProtocolParameters protocolParameters,int i,int j) {
-			//BigInteger gPowPi = protocolParameters.g.modPow(pj, protocolParameters.Pp);
-			//BigInteger hPowPpi = protocolParameters.h.modPow(ppj, protocolParameters.Pp);
-			
+		/** Checks the shares for correctness. Not implemented yet.
+		 * @param protocolParameters the security parameters of the protocol
+		 * @return true if the share could be verified, false otherwise
+		 */
+		public boolean isCorrect(ProtocolParameters protocolParameters) {
+			// Not implemented yet
 			return true;
 		}
 		
+		/** Generates the shares for a given party j.
+		 * @param j the id of the party for which we want to generate the share
+		 * @param bgwPrivParam the private parameters to use
+		 * @return a structure containing the shares generated to party j
+		 */
 		public static BGWPublicParameters genFor(int j, BGWPrivateParameters bgwPrivParam) {
+			
+			if (j < 1 || j > bgwPrivParam.n)
+				throw new IllegalArgumentException("j must be between 1 and the number of parties");
+			
 			int i = bgwPrivParam.i;
-			BigInteger pj = bgwPrivParam.f.eval(j);
-			BigInteger qj = bgwPrivParam.g.eval(j);
-			BigInteger hj = bgwPrivParam.h.eval(j);
-//			BigInteger ppj = bgwPrivParam.fp.eval(j);
-//			BigInteger qpj = bgwPrivParam.gp.eval(j);
-//			BigInteger hpj = bgwPrivParam.hp.eval(j);
-			return new BGWPublicParameters(i,j, pj, qj, hj/*, ppj, qpj,  hpj*/);
+			BigInteger pj = bgwPrivParam.fi.eval(j);
+			BigInteger qj = bgwPrivParam.gi.eval(j);
+			BigInteger hj = bgwPrivParam.hi.eval(j);
+			return new BGWPublicParameters(i,j, bgwPrivParam.n, pj, qj, hj);
 		}
 		
+		@Override
 		public String toString() {
 			return String.format("BGWPublicParameters[%d][%d]", this.i, this.j);
 		}
