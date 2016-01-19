@@ -1,0 +1,615 @@
+From: Christian M <christian.mouchet@alumni.epfl.ch>
+Date: Fri, 15 Jan 2016 17:33:32 +0100
+Subject: [PATCH] [Fixed] Some bugs with conversion of keys from/to byte arrays
+ [Added] Support for key generation without trusted dealer
+[Changed] MAX_KEY_SIZE to 2048
+---
+ src/paillierp/key/PaillierKey.java                 |  51 ++++-
+ src/paillierp/key/PaillierPrivateKey.java          |   5 +-
+ src/paillierp/key/PaillierPrivateThresholdKey.java | 142 +++++++++-----
+ src/paillierp/key/PaillierThresholdKey.java        | 209 +++++++++++++++++----
+ 4 files changed, 315 insertions(+), 92 deletions(-)
+
+diff --git a/src/paillierp/key/PaillierKey.java b/src/paillierp/key/PaillierKey.java
+index 900d36c..55db8ef 100755
+--- a/src/paillierp/key/PaillierKey.java
++++ b/src/paillierp/key/PaillierKey.java
+@@ -3,10 +3,15 @@
+  */
+ package paillierp.key;
+ 
++import java.io.ByteArrayInputStream;
++import java.io.ByteArrayOutputStream;
++import java.io.DataInputStream;
++import java.io.DataOutputStream;
++import java.io.IOException;
+ import java.io.Serializable;
+ import java.math.BigInteger;
+-import java.util.Random;
+ import java.security.SecureRandom;
++import java.util.Random;
+ 
+ /** 
+  * A simple public key for the generalized Paillier cryptosystem
+@@ -85,7 +90,7 @@ public class PaillierKey implements Serializable {
+ 	protected int k=0;
+ 	
+ 	/** Maximum number of bits allowed for keysize. */
+-	protected static final int MAX_KEY_SIZE = 512;
++	protected static final int MAX_KEY_SIZE = 2048;
+ 	
+ 	/*
+ 	 * 
+@@ -155,11 +160,28 @@ public class PaillierKey implements Serializable {
+ 	 * 
+ 	 * @param b			Byte array of the necessary values of this private key
+ 	 * @param seed		a long integer needed to start a random number generator
++	 * @throws IOException if the key could not be read from the byte array 
+ 	 * 
+ 	 * @see #toByteArray()
+ 	 */
+-	public PaillierKey(byte[] b, long seed) {
+-		this(new BigInteger(b), seed);
++	public PaillierKey(byte[] b, long seed) throws IOException {
++		// The encoding is :
++		// [ bitlength of n ]
++		// [ n ]
++		this(BigInteger.ZERO, seed);
++		ByteArrayInputStream bis = new ByteArrayInputStream(b);
++		DataInputStream dis = new DataInputStream(bis);
++		
++		int byteLenN = dis.readInt();
++		byte[] temp = new byte[byteLenN];
++		dis.read(temp);
++		this.n = new BigInteger(temp);
++		//TODO Do we want to test n to make sure it is an RSA modulus?
++		this.ns = n;
++		this.nSPlusOne = this.n.multiply(this.n);
++		this.nPlusOne = this.n.add(BigInteger.ONE);
++		this.k = this.n.bitLength();
++		dis.close();
+ 	}
+ 	
+ 	/*
+@@ -462,12 +484,23 @@ public class PaillierKey implements Serializable {
+ 	 * @see BigInteger#toByteArray()
+ 	 */
+ 	public byte[] toByteArray() {
+-		// The encoding would be
++		// The encoding is :
++		// [ bitlength of n ]
+ 		// [ n ]
+ 		
+-		int size = n.toByteArray().length;
+-		byte[] r = new byte[size];
+-		System.arraycopy(n.toByteArray(), 0, r, 4, size);
+-		return r;
++		ByteArrayOutputStream bos = new ByteArrayOutputStream(PaillierKey.this.byteArraySize());
++		DataOutputStream dos = new DataOutputStream(bos);
++		try {
++			dos.writeInt(n.toByteArray().length);
++			dos.write(n.toByteArray(), 0, n.toByteArray().length);
++			dos.close();
++		} catch (IOException e) {
++			return null;
++		}
++		return bos.toByteArray();
++	}
++
++	protected int byteArraySize() {
++		return 4+n.toByteArray().length;
+ 	}
+ }
+diff --git a/src/paillierp/key/PaillierPrivateKey.java b/src/paillierp/key/PaillierPrivateKey.java
+index 23a62d0..95f6626 100755
+--- a/src/paillierp/key/PaillierPrivateKey.java
++++ b/src/paillierp/key/PaillierPrivateKey.java
+@@ -3,8 +3,10 @@
+  */
+ package paillierp.key;
+ 
++import java.io.IOException;
+ import java.math.BigInteger;
+ import java.security.SecureRandom;
++
+ import paillierp.ByteUtils;
+ 
+ /** 
+@@ -128,10 +130,11 @@ public class PaillierPrivateKey extends PaillierKey {
+ 	 * 
+ 	 * @param b			Byte array of the necessary values of this private key
+ 	 * @param seed		a long integer needed to start a random number generator
++	 * @throws IOException if the key could not be read from the byte array
+ 	 * 
+ 	 * @see #toByteArray()
+ 	 */
+-	public PaillierPrivateKey(byte[] b, long seed) {
++	public PaillierPrivateKey(byte[] b, long seed) throws IOException {
+ 		super(ByteUtils.getLowerLayer(b), seed);
+ 		int offset = ByteUtils.getInt(b, b.length-4); // start of this layer's data
+ 		
+diff --git a/src/paillierp/key/PaillierPrivateThresholdKey.java b/src/paillierp/key/PaillierPrivateThresholdKey.java
+index 45caa82..87d22c0 100755
+--- a/src/paillierp/key/PaillierPrivateThresholdKey.java
++++ b/src/paillierp/key/PaillierPrivateThresholdKey.java
+@@ -3,10 +3,13 @@
+  */
+ package paillierp.key;
+ 
++import java.io.ByteArrayInputStream;
++import java.io.ByteArrayOutputStream;
++import java.io.DataInputStream;
++import java.io.DataOutputStream;
++import java.io.IOException;
+ import java.math.BigInteger;
+ 
+-import paillierp.ByteUtils;
+-
+ /**
+  * A private key for the threshold Paillier scheme <i>CS</i><sub>1</sub>.  This
+  * key is used to partially decrypt a ciphertext. At least
+@@ -24,8 +27,15 @@ import paillierp.ByteUtils;
+  *       server.  This value is no other than <i>f</i>(<i>i</i>) for the
+  *       (<i>w</i>-1)-degree polynomial <i>f</i> created by the key
+  *       distributor.
++ *   
+  * </ul>
+  * 
++ * <p> This class provides one unique implementation of the private key in both
++ * the centralized and distributed generation approach. A specific constructor
++ * can be used in the case where no trusted dealer is present and the key where
++ * generated using the method described by T. Nishide and K. Sakurai in 
++ * <i>Distributed Paillier Cryptosystem without Trusted Dealer</i>.
++ * 
+  * @author James Garrity
+  * @author Sean Hall
+  * @version 0.9 03/25/10
+@@ -137,23 +147,87 @@ public class PaillierPrivateThresholdKey extends PaillierThresholdKey {
+ 		this.si = si;
+ 		this.id = i;
+ 	}
++	
++	
++	/**
++	 * Creates a new private key for the generalized Paillier threshold scheme
++	 * from the given modulus <code>n</code>, for use on <code>l</code>
++	 * decryption servers, <code>w</code> of which are needed to decrypt
++	 * any message encrypted by using this private key.  The values
++	 * <code>v</code> and <code>vi</code> correspond to the public
++	 * values <i>v</i> and
++	 * <i>v<sub>i</sub></i>=<i>v</i><sup><i>l</i>!<i>s<sub>i</sub></i></sup>
++	 * needed to verify the zero knowledge proofs.  {@code si} is the secret share
++	 * for this decryption key, and {@code i} is the ID.
++	 * <p> This constructor is meant to be used in the case of a decentralized 
++	 * key generation, as described by T. Nishide and K. Sakurai in 
++	 * <i>Distributed Paillier Cryptosystem without Trusted Dealer</i>. In this case, a
++	 * new public value &Theta;' needs to be part of the public key.
++	 * 
++	 * @param n        a safe prime product of <i>p</i> and <i>q</i> where
++	 *                 <i>p'</i>=(<i>p</i>-1)/2 and <i>a'</i>=(<i>a</i>-1)/2
++	 *                 are also both primes
++	 * @param thetaprime &Theta;' = &Delta; &Phi;(<i>N</i>) &Beta; + <i>N</i> &Delta; <i>R</i>
++	 * 					 in the context of Threshold Paillier without trusted dealer, where the private
++	 *					 keys are of the form &Theta;' - <i>N f</i>(<i>x</i>). Other constructors assume
++	 *					 that it is not the case and set &Theta;' = 1
++	 * @param l        number of decryption servers
++	 * @param combineSharesConstant
++	 *                 precomputed value (4<code>*l</code>!)<sup>-1</sup>
++	 *                 mod <code>n</code>
++	 * @param w        threshold of servers needed to successfully decrypt any
++	 *                 ciphertext created by this public key.  Note that
++	 *                 <code>w</code>&le;<code>l</code>/2.
++	 * @param v        a generator of a cyclic group of squares in
++	 *                 <i>Z</i><sup>*</sup><sub><code>n</code><sup>2</sup></sub>
++	 * @param viarray  array of verification keys where <code>vi[i]</code> is
++	 *                 <code>v</code><sup><code>l</code>!<i>s</i><sub><code>i</code></sub></sup>
++	 *                 where <i>s</i><sub><code>i</code></sub> is the private key
++	 *                 for decryption server <code>i</code>
++	 * @param si       secret share for this server
++	 * @param i        ID of the decryption server (from 1 to {@code l})
++	 * @param seed     a long integer needed to start a random number generator
++	 */
++	public PaillierPrivateThresholdKey(BigInteger n,
++										BigInteger thetaprime,
++										int l,
++										int w,
++										BigInteger v,
++										BigInteger[] viarray,
++										BigInteger si,
++										int i,
++										long seed
++										) {
++		super(n, thetaprime, l, w, v, viarray, seed);
++		this.si = si;
++		this.id = i;
++	}
+ 
+ 	/**
+ 	 * Creates a new private key using a byte encoding of a key.
+ 	 * 
+ 	 * @param b			Byte array of the necessary values of this private key
+ 	 * @param seed		a long integer needed to start a random number generator
++	 * @throws IOException if the key could not be read from the byte array
+ 	 * 
+ 	 * @see #toByteArray()
+ 	 */
+-	public PaillierPrivateThresholdKey(byte[] b, long seed) {
+-		super(ByteUtils.getLowerLayer(b), seed);
+-		int offset = ByteUtils.getInt(b, b.length-4);
+-		
+-		this.id = ByteUtils.getInt(b, offset);
+-		offset += 4;
++	public PaillierPrivateThresholdKey(byte[] b, long seed) throws IOException {
++		// The encoding is:
++		// [ prev. layer ]
++		// [ id ] 4 bytes
++		// [ bitlength si ] 4 bytes
++		// [ si ]
++		super(b, seed);
++		ByteArrayInputStream bis = new ByteArrayInputStream(b, super.byteArraySize(), b.length);
++		DataInputStream dis = new DataInputStream(bis);
+ 		
+-		this.si = ByteUtils.getBigInt(b, offset+4, ByteUtils.getInt(b, offset));
++		this.id = dis.readInt();
++		int siByteLength = dis.readInt();
++		byte[] siBytes = new byte[siByteLength];
++		dis.read(siBytes);
++		this.si = new BigInteger(siBytes);
++		dis.close();
+ 	}
+ 	
+ 	/*
+@@ -207,44 +281,26 @@ public class PaillierPrivateThresholdKey extends PaillierThresholdKey {
+ 	 * @see BigInteger#toByteArray()
+ 	 */
+ 	public byte[] toByteArray() {
+-		// The encoding would be:
++		// The encoding is:
+ 		// [ prev. layer ]
+-		// [ id ]
+-		// [ size of si ]
++		// [ id ] 4 bytes
++		// [ bitlength si ] 4 bytes
+ 		// [ si ]
+-		// [ length of previous layer ]
+-		
+-		byte[] p = super.toByteArray();
+ 		
+-		byte[] r = ByteUtils.appendInt(p, id);
+-		r = ByteUtils.appendBigInt(r, si);
+-		r = ByteUtils.appendInt(r, p.length);
++		byte[] upperLayer = super.toByteArray();
+ 		
+-		return r;
++		ByteArrayOutputStream bos = new ByteArrayOutputStream(upperLayer.length + 4 + 4 + si.toByteArray().length);
++		DataOutputStream dos = new DataOutputStream(bos);
++		try {
++			dos.write(upperLayer, 0, upperLayer.length);
++			dos.writeInt(id);
++			dos.writeInt(si.toByteArray().length);
++			dos.write(si.toByteArray(), 0, si.toByteArray().length);
++			dos.close();
++		} catch (IOException e) {
++			return null;
++		}
+ 		
+-//		byte[] si = this.si.toByteArray();
+-//		
+-//		byte[] r;
+-//		
+-//		//Halt if this doesn't work.
+-//		if (p.length+si.length+12 > Integer.MAX_VALUE) {
+-//			r = new byte[0];
+-//		} else {
+-//			r = new byte[p.length + si.length + 12];
+-//				// to account for previous layer, si,
+-//				//		size of si, id, and length of prev layer
+-//					
+-//			System.arraycopy(p, 0,
+-//					r, 0, p.length);
+-//			System.arraycopy(intToByte(id), 0,
+-//					r, p.length, 4);
+-//			System.arraycopy(intToByte(si.length), 0,
+-//					r, p.length+4, 4);
+-//			System.arraycopy(si, 0,
+-//					r, p.length+4+4, si.length);
+-//			System.arraycopy(intToByte(p.length), 0,
+-//					r, p.length+4+4+si.length, 4);
+-//		}
+-//		return r;
++		return bos.toByteArray();
+ 	}
+ }
+diff --git a/src/paillierp/key/PaillierThresholdKey.java b/src/paillierp/key/PaillierThresholdKey.java
+index 4c5f970..d23324f 100755
+--- a/src/paillierp/key/PaillierThresholdKey.java
++++ b/src/paillierp/key/PaillierThresholdKey.java
+@@ -3,10 +3,13 @@
+  */
+ package paillierp.key;
+ 
++import java.io.ByteArrayInputStream;
++import java.io.ByteArrayOutputStream;
++import java.io.DataInputStream;
++import java.io.DataOutputStream;
++import java.io.IOException;
+ import java.math.BigInteger;
+ 
+-import paillierp.ByteUtils;
+-
+ 
+ /**
+  * A public key for the threshold Paillier cryptosystem
+@@ -34,6 +37,8 @@ import paillierp.ByteUtils;
+  *       server <i>i</i>.  The key <i>v<sub>i</sub></i> should be equal to
+  *       <i>v</i><sup>&Delta;<i>s<sub>i</sub></i></sup> where &Delta;=<i>l</i>!
+  *       (i.e. &Delta; is the factorial of the number of decryption servers).
++ *   <li>&Theta;' is a public value used in the context of a decentralized key 
++ *   	 generation. When outside this context, it is simply 1.</li>
+  * </ul>
+  * <p>
+  * The set of verification keys {<i>v<sub>i</sub></i>} is generated by the key
+@@ -43,6 +48,11 @@ import paillierp.ByteUtils;
+  * The public information contained in this key is sufficient to completely
+  * decrypt a ciphertext <i>c</i>, <i>given the k&ge;w partial decryptions
+  * c<sub>1</sub>,...,c<sub>k</sub></i>.
++ * <p> This class provides one unique implementation of the public key in both
++ * the centralized and distributed generation approach. A specific constructor
++ * can be used in the case where no trusted dealer is present and the key where
++ * generated using the method described by T. Nishide and K. Sakurai in 
++ * <i>Distributed Paillier Cryptosystem without Trusted Dealer</i>.
+  * <p>
+  * <b>NOTE:</b> This is for the implementation where <i>s</i>=1.
+  * 
+@@ -90,6 +100,14 @@ public class PaillierThresholdKey extends PaillierKey {
+ 	// I don't think w is needed anywhere except for the key generation
+ 
+ 	/**
++	 * &Theta;' = &Delta; &Phi;(<i>N</i>) &Beta; + <i>N</i> &Delta; <i>R</i> is used
++	 * in the context of Threshold Paillier without trusted dealer, where the private
++	 * keys are of the form &Theta;' - <i>N f</i>(<i>x</i>). If it is not the case, 
++	 * it should be equal to 1.
++	 */
++	protected final BigInteger thetaPrime;
++	
++	/**
+ 	 * The cached value of (4&Delta;<sup>2</sup>)<sup>-1</sup> mod
+ 	 * <i>n<sup>s</sup></i>
+ 	 */
+@@ -131,7 +149,8 @@ public class PaillierThresholdKey extends PaillierKey {
+ 		super(n, seed);
+ 		this.l = l;
+ 		this.delta = KeyGen.factorial(l);
+-		this.combineSharesConstant = BigInteger.valueOf(4).multiply(delta.multiply(delta)).modInverse(ns);
++		this.thetaPrime = BigInteger.ONE;
++		this.combineSharesConstant = BigInteger.valueOf(4).multiply(delta.multiply(delta).multiply(thetaPrime)).modInverse(ns);
+ 		this.w = w;
+ 		this.v = v;
+ 		this.vi = viarray;
+@@ -175,6 +194,60 @@ public class PaillierThresholdKey extends PaillierKey {
+ 		this.w = w;
+ 		this.v = v;
+ 		this.vi = viarray;
++		this.thetaPrime = combineSharesConstant.modInverse(ns).divide(delta.multiply(delta).multiply(BigInteger.valueOf(4)));
++	}
++	
++	/**
++	 * Creates a new public key for the generalized Paillier threshold scheme
++	 * from the given modulus <code>n</code>, for use on <code>l</code>
++	 * decryption servers, <code>w</code> of which are needed to decrypt
++	 * any message encrypted by using this public key.  The values
++	 * <code>v</code> and <code>vi</code> correspond to the public
++	 * values <i>v</i> and
++	 * <i>v<sub>i</sub></i>=<i>v</i><sup><i>l</i>!<i>s<sub>i</sub></i></sup>
++	 * needed to verify the zero knowledge proofs.
++	 * <p> This constructor is meant to be used in the case of a decentralized 
++	 * key generation, as described by T. Nishide and K. Sakurai in 
++	 * <i>Distributed Paillier Cryptosystem without Trusted Dealer</i>. In this case, a
++	 * new public value &Theta;' needs to be part of the public key.
++	 * 
++	 * @param n          a safe prime product of <i>p</i> and <i>q</i> where
++	 *                   <i>p'</i>=(<i>p</i>-1)/2 and <i>a'</i>=(<i>a</i>-1)/2
++	 *                   are also both primes
++	 * @param thetaprime &Theta;' = &Delta; &Phi;(<i>N</i>) &Beta; + <i>N</i> &Delta; <i>R</i>
++	 * 					 in the context of Threshold Paillier without trusted dealer, where the private
++	 *					 keys are of the form &Theta;' - <i>N f</i>(<i>x</i>). Other constructors assume
++	 *					 that it is not the case and set &Theta;' = 1
++	 * @param l          number of decryption servers
++	 * @param combineSharesConstant
++	 *                   precomputed value (4<code>*l</code>!)<sup>-1</sup>
++	 *                   mod <code>n</code><sup><i>s</i></sup>
++	 * @param w          threshold of servers needed to successfully decrypt any
++	 *                   ciphertext created by this public key.  Note that
++	 *                   <code>w</code>&le;<code>l</code>/2.
++	 * @param v          a generator of a cyclic group of squares in
++	 *                   <i>Z</i><sup>*</sup><sub><code>n</code><sup>2</sup></sub>
++	 * @param viarray    array of verification keys where <code>vi[i]</code> is
++	 *                   <code>v</code><sup><code>l</code>!<i>s</i><sub><code>i</code></sub></sup>
++	 *                   where <i>s</i><sub><code>i</code></sub> is the private
++	 *                   key for decryption server <code>i</code>
++	 * @param seed	a long integer needed to start a random number generator
++	 */
++	public PaillierThresholdKey(BigInteger n, 
++								BigInteger thetaprime,
++								int l,
++								int w,
++								BigInteger v,
++								BigInteger[] viarray,
++								long seed) {
++		super(n,seed);
++		this.l = l;
++		this.thetaPrime = thetaprime;
++		this.delta = KeyGen.factorial(l);
++		this.combineSharesConstant = BigInteger.valueOf(4).multiply(delta.multiply(delta)).multiply(thetaprime).modInverse(ns);
++		this.w = w;
++		this.v = v;
++		this.vi = viarray;
+ 	}
+ 
+ 	/**
+@@ -182,31 +255,55 @@ public class PaillierThresholdKey extends PaillierKey {
+ 	 * 
+ 	 * @param b			Byte array of the necessary values of this private key
+ 	 * @param seed		a long integer needed to start a random number generator
++	 * @throws IOException if the key could not be read from the byte array
+ 	 * 
+ 	 * @see #toByteArray()
+ 	 */
+-	public PaillierThresholdKey(byte[] b, long seed) {
+-		super(ByteUtils.getLowerLayer(b), seed);
+-		int offset = ByteUtils.getInt(b, b.length-4);
+-		
+-		this.l = ByteUtils.getInt(b, offset);
+-		offset += 4;
+-		
+-		this.w = ByteUtils.getInt(b, offset);
+-		offset += 4;
+-		
+-		int length = ByteUtils.getInt(b, offset);
+-		offset += 4;
+-		
+-		this.v = ByteUtils.getBigInt(b, offset, length);
+-		offset += length;
++	public PaillierThresholdKey(byte[] b, long seed) throws IOException {
++		// The encoding is:
++		// [ prev. layer ]
++		// [ l ] 4 bytes
++		// [ w ] 4 bytes
++		// [ bytelenght of thetaprime] 4 bytes
++		// [ bytelength of v ] 4 bytes
++		// [ bytelength of v1 ] 4 bytes
++		// [ ... ]
++		// [ bytelength of vl ] 4 bytes
++		// [ thetaprime ]
++		// [ v ]
++		// [ v1 ]
++		// ...
++		// [ vl ]
++		super(b, seed);
++		ByteArrayInputStream bis = new ByteArrayInputStream(b, super.byteArraySize(), b.length);
++		DataInputStream dis = new DataInputStream(bis);
++		this.l = dis.readInt();
++		this.w = dis.readInt();
++		int byteLenThetaprime = dis.readInt();
++		int byteLenV = dis.readInt();
++		int[] byteLenVi = new int[l];
++		for (int i=0; i < l; i++) {
++			byteLenVi[i] = dis.readInt();
++		}
+ 		
+ 		this.vi = new BigInteger[l];
+-		for (int i = 0; i < vi.length; i++) {
+-			length = ByteUtils.getInt(b, offset);
+-			this.vi[i] = ByteUtils.getBigInt(b, offset+4, length);
+-			offset += length + 4;
++
++		byte[] temp = new byte[byteLenThetaprime];
++		
++		dis.read(temp);
++		this.thetaPrime = new BigInteger(temp);
++		temp = new byte[byteLenV];
++		dis.read(temp);
++		this.v = new BigInteger(temp);
++		for (int i=0; i<l ; i++) {
++			temp = new byte[byteLenVi[i]];
++			dis.read(temp);
++			this.vi[i] = new BigInteger(temp);
+ 		}
++		
++		this.delta = KeyGen.factorial(l);
++		this.combineSharesConstant =  BigInteger.valueOf(4).multiply(delta.multiply(delta)).multiply(thetaPrime).modInverse(ns);
++		dis.close();
+ 	}
+ 	
+ 	/*
+@@ -227,6 +324,17 @@ public class PaillierThresholdKey extends PaillierKey {
+ 		return new PaillierThresholdKey(n, l, combineSharesConstant, w, 
+ 				v, vi, rnd.nextLong());
+ 	}
++	
++	
++	/** Return &Theta;', the second public value when keys are generated in a decentralized
++	 * way.
++	 * @return &Theta;' = &Delta; &Phi;(<i>N</i>) &Beta; + <i>N</i> &Delta; <i>R</i> 
++	 *  if the keys are of the form &Theta;' - <i>N f</i>(<i>x</i>), <br>
++	 *  1 otherwise
++	 */
++	public BigInteger getThetaPrime() {
++		return thetaPrime;
++	}
+ 
+ 	/**
+ 	 * Returns the public verification value.
+@@ -302,29 +410,52 @@ public class PaillierThresholdKey extends PaillierKey {
+ 	 * @see BigInteger#toByteArray()
+ 	 */
+ 	public byte[] toByteArray() {
+-		// The encoding would be:
++		// The encoding is:
+ 		// [ prev. layer ]
+-		// [ l ]
+-		// [ w ]
+-		// [ length of v ]
++		// [ l ] 4 bytes
++		// [ w ] 4 bytes
++		// [ bytelenght of thetaprime] 4 bytes
++		// [ bytelength of v ] 4 bytes
++		// [ bytelength of v1 ] 4 bytes
++		// [ ... ]
++		// [ bytelength of vl ] 4 bytes
++		// [ thetaprime ]
+ 		// [ v ]
+-		// [ length of v1 ]
+ 		// [ v1 ]
+ 		// ...
+-		// [ length of vl ]
+-		// [ vl]
+-		// [ length of previous layer ]
++		// [ vl ]
+ 		
+-		byte[] p = super.toByteArray();		// previous layer
++		byte[] upperLayer = super.toByteArray();
++		ByteArrayOutputStream bos = new ByteArrayOutputStream(PaillierThresholdKey.this.byteArraySize());
++		DataOutputStream dos = new DataOutputStream(bos);
+ 		
+-		byte[] r = ByteUtils.appendInt(p, l, w);
+-		if (r.length == 0) { return r; }
+-		r = ByteUtils.appendBigInt(p, v);
+-		if (r.length == 0) { return r; }
+-		r = ByteUtils.appendBigInt(p, vi);
+-		if (r.length == 0) { return r; }
+-		r = ByteUtils.appendInt(r, p.length);
++		try {
++			dos.write(upperLayer, 0, upperLayer.length);
++			dos.writeInt(l);
++			dos.writeInt(w);
++			dos.writeInt(thetaPrime.toByteArray().length);
++			dos.writeInt(v.toByteArray().length);
++			for(int i=0; i < l; i++)
++				dos.writeInt(vi[i].toByteArray().length);
++			dos.write(thetaPrime.toByteArray(), 0, thetaPrime.toByteArray().length);
++			dos.write(v.toByteArray(), 0, v.toByteArray().length);
++			for(int i=0; i < l; i++)
++				dos.write(vi[i].toByteArray(), 0, vi[i].toByteArray().length);
++			dos.close();
++		} catch (IOException e) {
++			return null;
++		}
+ 		
+-		return r;
++		return bos.toByteArray();
++	}
++
++	protected int byteArraySize() {
++		int bigIntArrayByteLength = super.byteArraySize() 
++									+ thetaPrime.toByteArray().length 
++									+  v.toByteArray().length;
++		for(int i=0; i < l; i++){
++			bigIntArrayByteLength += vi[i].toByteArray().length;
++		}
++		return 4 + 4 + 4 + 4 + l*4 + bigIntArrayByteLength;
+ 	}
+ }
+-- 
+2.5.4 (Apple Git-61)
+
