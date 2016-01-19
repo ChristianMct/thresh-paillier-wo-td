@@ -47,6 +47,7 @@ public class ProtocolActor extends AbstractLoggingFSM<States, ProtocolData> {
 	/** Constructor of the actor. This makes use of the Akka AbstractFSM DSL to build the FSM.
 	 * @param protocolParams the public parameters on which the parties agreed 
 	 */
+	@SuppressWarnings("deprecation")
 	public ProtocolActor(ProtocolParameters protocolParams) {
 		bgwActor = context().actorOf(Props.create(BGWProtocolActor.class, protocolParams,self()), "BGWActor");
 		biprimalTestActor = context().actorOf(Props.create(BiprimalityTestActor.class, self()), "BiprimalityTestActor");

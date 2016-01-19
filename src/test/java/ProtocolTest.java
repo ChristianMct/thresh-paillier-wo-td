@@ -21,6 +21,7 @@ public class ProtocolTest {
 	public static final int T_THRESHOLD = 4; // Should be less than n/2
 	public static final int KEY_SIZE = 128; // Tested up to 512
 	
+	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws InterruptedException {
 	    ActorSystem system = ActorSystem.create();
 	    
@@ -34,7 +35,29 @@ public class ProtocolTest {
 	    
 	    Participants participants = new Participants(indexMap);
 	    
+	    long start = System.currentTimeMillis();
+	    
 	    indexMap.keySet().stream().forEach(actor -> actor.tell(participants, ActorRef.noSender()));
+	    
+	    system.awaitTermination();
+	    
+	    long different = System.currentTimeMillis() - start;
+	    printEllapsedTime(different);
+	}
+
+	private static void printEllapsedTime(long different) {
+	    long secondsInMilli = 1000;
+		long minutesInMilli = secondsInMilli * 60;
+		long hoursInMilli = minutesInMilli * 60;
+		
+		long elapsedHours = different / hoursInMilli;
+		different = different % hoursInMilli;
+		
+		long elapsedMinutes = different / minutesInMilli;
+		different = different % minutesInMilli;
+		
+		long elapsedSeconds = different / secondsInMilli;
+	    System.out.println(String.format("Finished after %dh %dm %ds",elapsedHours, elapsedMinutes, elapsedSeconds));
 	}
 
 }
