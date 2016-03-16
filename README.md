@@ -1,4 +1,4 @@
-# thresh-pailler-wo-td
+# thresh-paillier-wo-td
 Implementation of a Threshold Paillier Cryptosystem distributed key generation protocol without trusted party described 
 by Takashi Nishide and Kouichi Sakurai in their paper "**Distributed Paillier Cryptosystem without Trusted Dealer**".
 
